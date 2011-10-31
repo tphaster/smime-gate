@@ -1,0 +1,3 @@
+smime-gate's main objective is to create open source solution for automated
+signing/encrypting mail objects using S/MIME standard. It will be written
+in ANSI C with standard libraries, so it should work on every Unix-like system.
