@@ -11,7 +11,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "include/system.h"
+#include "system.h"
 
 #define MAXFD   64
 

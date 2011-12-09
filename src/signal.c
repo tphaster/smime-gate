@@ -5,7 +5,7 @@
  */
 
 #include <signal.h>
-#include "include/system.h"
+#include "system.h"
 
 Sigfunc *signal (int signo, Sigfunc *func)
 {
@@ -38,5 +38,15 @@ Sigfunc *Signal (int signo, Sigfunc *func)
     if ( (sigfunc = signal(signo, func)) == SIG_ERR)
         err_sys("signal error");
     return sigfunc;
+}
+
+void sig_chld (int signo)
+{
+    pid_t pid;
+    int stat;
+
+    while ( (pid = waitpid(-1, &stat, WNOHANG)) > 0)
+        printf("child %d terminated\n", pid);
+    return;
 }
 

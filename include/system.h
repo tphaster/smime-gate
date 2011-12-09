@@ -1,6 +1,6 @@
 /**
  * File:          include/system.h
- * Description:   Header file for system functions.
+ * Description:   Header file for system functions and definitions.
  * Author:        Tomasz Pieczerak (tphaster)
  */
 
@@ -15,10 +15,18 @@ typedef void    Sigfunc(int);   /* for signal handlers */
 #define min(a,b)    ((a) < (b) ? (a) : (b))
 #define max(a,b)    ((a) > (b) ? (a) : (b))
 
+/* Define bzero() as a macro, if it's not in standard C library. */
+#ifndef HAVE_BZERO
+#define bzero(ptr,n)    memset(ptr, 0, n)
+#endif
+
+#define SA      struct sockaddr
+
 /* Miscellaneous constants */
 #define MAXLINE         4096    /*  max text line length */
 #define MAXSOCKADDR      128    /*  max socket address structure size */
 #define BUFFSIZE        8192    /*  buffer size for reads and writes */
+#define LISTENQ         1024    /* default value fo backlog in listen() */
 
 /* Error reporting functions */
 void err_ret (const char *fmt, ...);
@@ -62,6 +70,7 @@ void Write (int fd, void *ptr, size_t nbytes);
 /* Signal wrapper functions */
 Sigfunc *signal (int signo, Sigfunc *func);
 Sigfunc *Signal (int signo, Sigfunc *func);
+void sig_chld (int signo);
 
 /* Socket wrapper functions */
 int Accept (int fd, struct sockaddr *sa, socklen_t *salenptr);
@@ -92,4 +101,9 @@ void Shutdown (int fd, int how);
 int Sockatmark (int fd);
 int Socket (int family, int type, int protocol);
 void Socketpair (int family, int type, int protocol, int *fd);
+
+/* Read/write functions */
+ssize_t Readn (int fd, void *ptr, size_t nbytes);
+void Writen (int fd, void *ptr, size_t nbytes);
+ssize_t Readline (int fd, void *ptr, size_t maxlen);
 

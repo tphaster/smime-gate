@@ -11,7 +11,7 @@
 #include <string.h>
 #include <syslog.h>
 
-#include "include/system.h"
+#include "system.h"
 
 int daemon_proc;    /* set nonzero by daemonize() */
 
