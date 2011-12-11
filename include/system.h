@@ -7,6 +7,7 @@
 #include <poll.h>
 #include <signal.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 
 /* Typedefs */
 typedef void    Sigfunc(int);   /* for signal handlers */

@@ -4,6 +4,11 @@
  * Author:      Tomasz Pieczerak (tphaster)
  */
 
+#include <errno.h>
+#include <unistd.h>
+
+#include "system.h"
+
 /* readn - read "n" bytes from a descriptor. */
 ssize_t readn (int fd, void *vptr, size_t n)
 {
@@ -63,7 +68,7 @@ ssize_t writen (int fd, const void *vptr, size_t n)
 
 void Writen (int fd, void *ptr, size_t nbytes)
 {
-    if (writen(fd, ptr, nbytes) != nbytes)
+    if (writen(fd, ptr, nbytes) != (ssize_t) nbytes)
         err_sys("writen error");
 }
 
@@ -92,7 +97,8 @@ again:
 
 ssize_t readline (int fd, void *vptr, size_t maxlen)
 {
-    int n, rc;
+    int rc;
+    size_t n;
     char c, *ptr;
 
     ptr = vptr;
@@ -104,7 +110,7 @@ ssize_t readline (int fd, void *vptr, size_t maxlen)
         }
         else if (rc == 0) {
             if (n == 1)
-                return(0);  /* EOF, no data read */
+                return 0;   /* EOF, no data read */
             else
                 break;      /* EOF, some data was read */
         }

@@ -83,14 +83,14 @@ void *Malloc (size_t size)
         err_sys("malloc error");
     return ptr;
 }
-
+/*
 void Mktemp (char *template)
 {
     if (mktemp(template) == NULL || template[0] == 0)
         err_quit("mktemp error");
 }
-
-#include	<sys/mman.h>
+*/
+#include <sys/mman.h>
 
 void *Mmap (void *addr, size_t len, int prot, int flags, int fd, off_t offset)
 {

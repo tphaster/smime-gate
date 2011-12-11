@@ -5,6 +5,10 @@
  */
 
 #include <signal.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
 #include "system.h"
 
 Sigfunc *signal (int signo, Sigfunc *func)
