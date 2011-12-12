@@ -19,7 +19,15 @@
 
 #define HOSTNAME_MAXLEN     128
 #define LINE_MAXLEN         256
+#define ADDR_MAXLEN         128
 
-int smtp_send_command (int sockfd, size_t cmd);
+struct mail_object {
+    char *mail_from;
+    char **rcpt_to;
+    size_t no_rcpt;
+    char *data;
+};
+
+int smtp_send_command (int sockfd, size_t cmd, struct mail_object *mail);
 int smtp_send_reply (int sockfd);
 
