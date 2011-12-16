@@ -5,6 +5,7 @@
  */
 
 #include <errno.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -442,5 +443,80 @@ ssize_t smtp_readline (int fd, void *vptr, size_t maxlen)
     *ptr = 0;   /* null terminate like fgets() */
 
     return n;
+}
+
+int smtp_recv_command (int sockfd, struct smtp_command *cmd)
+{
+    char *line;
+
+    if (NULL == cmd)
+        return NULLPTR; /* NULL pointer dereference */
+
+    line = Calloc(LINE_MAXLEN, sizeof (*line));
+
+    if (smtp_readline(sockfd, line, LINE_MAXLEN) <= 0){
+        free(line);
+        return RCVERROR;   /* receiving error: no data to read or error */
+    }
+
+    bzero(cmd->data, sizeof(cmd->data));
+
+    if (0 == strncmp("HELO", line, 4)) {
+        cmd->code = HELO;
+        if (strlen(line) < 6) {
+            free(line);
+            return BADPARAM;    /* bad parameter */
+        }
+        strncpy(cmd->data, line+5, DOMAIN_MAXLEN);
+    }
+    else if (0 == strncmp("EHLO", line, 4)) {
+        cmd->code = EHLO;
+        if (strlen(line) < 6) {
+            free(line);
+            return BADPARAM;    /* bad parameter */
+        }
+        strncpy(cmd->data, line+5, DOMAIN_MAXLEN);
+    }
+    else if (0 == strncmp("MAIL", line, 4)) {
+        cmd->code = MAIL;
+        if (strlen(line) < 15) {
+            free(line);
+            return BADPARAM;    /* bad parameter */
+        }
+        strncpy(cmd->data, line+10, ADDR_MAXLEN);
+    }
+    else if (0 == strncmp("RCPT", line, 4)) {
+        cmd->code = RCPT;
+        if (strlen(line) < 1333) {
+            free(line);
+            return BADPARAM;    /* bad parameter */
+        }
+        strncpy(cmd->data, line+8, ADDR_MAXLEN);
+    }
+    else if (0 == strncmp("DATA", line, 4))
+        cmd->code = DATA;
+    else if (0 == strncmp("RSET", line, 4))
+        cmd->code = RSET;
+    else if (0 == strncmp("VRFY", line, 4))
+        cmd->code = VRFY;
+    else if (0 == strncmp("NOOP", line, 4))
+        cmd->code = NOOP;
+    else if (0 == strncmp("QUIT", line, 4))
+        cmd->code = QUIT;
+    else {
+        cmd->code = 0;
+        strncpy(cmd->data, line, LINE_MAXLEN);
+
+        free(line);
+        return NKNOWNCMD;   /* unknown command received */
+    }
+
+    free(line);
+    return 0;
+}
+
+int smtp_recv_reply (int sockfd, struct smtp_reply *rply)
+{
+    return 0;
 }
 

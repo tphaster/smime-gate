@@ -46,6 +46,24 @@
 #define START       0
 #define CR_READ     1
 
+/* SMTP Receive Command Errors */
+#define NULLPTR     -1
+#define RCVERROR    -2
+
+/* SMTP Receive Command Warnings */
+#define BADPARAM     1
+#define NKNOWNCMD    2
+
+
+/*** Macros ***/
+#define min(a,b)    ((a) < (b) ? (a) : (b))
+#define max(a,b)    ((a) > (b) ? (a) : (b))
+
+/* Define bzero() as a macro, if it's not in standard C library. */
+#ifndef HAVE_BZERO
+#define bzero(ptr,n)    memset(ptr, 0, n)
+#endif
+
 /*** Typedefs ***/
 
 /* Mail object */
@@ -59,11 +77,7 @@ struct mail_object {
 /* SMTP Command */
 struct smtp_command {
     size_t code;
-    union {
-        char domain[DOMAIN_MAXLEN];
-        char mail_from[ADDR_MAXLEN];
-        char rcpt_to[ADDR_MAXLEN];
-    } params;
+    char data [max(DOMAIN_MAXLEN, ADDR_MAXLEN)];
 };
 
 /* SMTP Reply */
@@ -76,4 +90,5 @@ struct smtp_reply {
 int smtp_send_command (int sockfd, size_t cmd, struct mail_object *mail);
 int smtp_send_reply (int sockfd, size_t code, const char *msg, size_t msg_len);
 ssize_t smtp_readline (int fd, void *vptr, size_t maxlen);
+int smtp_recv_command (int sockfd, struct smtp_command *cmd);
 
