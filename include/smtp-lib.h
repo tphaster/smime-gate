@@ -6,7 +6,7 @@
 
 #include <sys/types.h>
 
-/* SMTP Commands */
+/*** SMTP Commands ***/
 #define EHLO    1
 #define HELO    2
 #define MAIL    3
@@ -17,7 +17,7 @@
 #define NOOP    8
 #define QUIT    9
 
-/* SMTP Replies */
+/*** SMTP Replies ***/
 #define R211     1  /* (after QUIT) closing connection */
 #define R220     2  /* (on connection start) greeting */
 #define R250     3  /* requested mail action okay, completed */
@@ -38,11 +38,17 @@
 #define R554    18  /* transaction failed */
 #define R555    19  /* MAIL FROM/RCPT TO parameters not recognized or not implemented */
 
-/* Constants */
+/*** Constants ***/
 #define DOMAIN_MAXLEN       128
 #define LINE_MAXLEN         256
 #define ADDR_MAXLEN         128
 
+#define START       0
+#define CR_READ     1
+
+/*** Typedefs ***/
+
+/* Mail object */
 struct mail_object {
     char *mail_from;
     char **rcpt_to;
@@ -50,6 +56,24 @@ struct mail_object {
     char *data;
 };
 
+/* SMTP Command */
+struct smtp_command {
+    size_t code;
+    union {
+        char domain[DOMAIN_MAXLEN];
+        char mail_from[ADDR_MAXLEN];
+        char rcpt_to[ADDR_MAXLEN];
+    } params;
+};
+
+/* SMTP Reply */
+struct smtp_reply {
+    size_t code;
+    char msg[LINE_MAXLEN-4];
+};
+
+/*** Functions ***/
 int smtp_send_command (int sockfd, size_t cmd, struct mail_object *mail);
 int smtp_send_reply (int sockfd, size_t code, const char *msg, size_t msg_len);
+ssize_t smtp_readline (int fd, void *vptr, size_t maxlen);
 

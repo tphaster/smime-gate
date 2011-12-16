@@ -4,6 +4,7 @@
  * Author:       Tomasz Pieczerak (tphaster)
  */
 
+#include <errno.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -230,13 +231,13 @@ int smtp_send_reply (int sockfd, size_t code, const char *msg, size_t msg_len)
         case R452:  /* requested action not taken:
                        insufficient system storage */
             if (NULL == msg) {
-                strcpy(rply_line, "requested action not taken: "
+                strcpy(rply_line, "452 requested action not taken: "
                                   "insufficient system storage\r\n");
                 Writen(sockfd, rply_line, strlen(rply_line));
                 return 0;
             }
             else {
-                strcpy(rply_line, " ");
+                strcpy(rply_line, "452 ");
                 break;
             }
 
@@ -373,5 +374,73 @@ int smtp_send_reply (int sockfd, size_t code, const char *msg, size_t msg_len)
     Writen(sockfd, rply_line, strlen(rply_line));
 
     return 0;
+}
+
+/* WARNING! Function buf_read() is not safe for threads */
+static ssize_t buf_read (int fd, char *ptr)
+{
+    static int read_cnt = 0;
+    static char *read_ptr;
+    static char read_buf[LINE_MAXLEN];
+
+    /* if buffer is empty */
+    if (read_cnt <= 0) {
+again:
+        /* put available data into buffer */
+        if ( (read_cnt = read(fd, read_buf, sizeof(read_buf))) < 0) {
+            if (errno == EINTR)
+                goto again;
+            return -1;  /* reading error, check errno for more information */
+        }
+        else if (read_cnt == 0)
+            return 0;   /* there is nothing more to read */
+
+        read_ptr = read_buf;
+    }
+
+    read_cnt--;
+    *ptr = *read_ptr++;
+
+    return 1;   /* one character read */
+}
+
+ssize_t smtp_readline (int fd, void *vptr, size_t maxlen)
+{
+    int rc, state;
+    size_t n;
+    char c, *ptr;
+
+    ptr = vptr;
+    state = START;
+
+    for (n = 1; n < maxlen; n++) {
+        if ( (rc = buf_read(fd, &c)) == 1) {
+            *ptr++ = c;
+
+            if (CR_READ == state) {
+                if (c == '\n') {
+                    ptr -= 2;   /* CRLF is not stored */
+                    break;
+                }
+                else
+                    state = START;
+            }
+
+            if (c == '\r')
+                state = CR_READ;    /* CR read; in next turn check for LF */
+        }
+        else if (rc == 0) {
+            if (n == 1)
+                return 0;   /* EOF, no data read */
+            else
+                break;      /* EOF, some data was read */
+        }
+        else
+            return -1;      /* error, errno set by read() */
+    }
+
+    *ptr = 0;   /* null terminate like fgets() */
+
+    return n;
 }
 

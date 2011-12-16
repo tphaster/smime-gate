@@ -57,7 +57,7 @@ ssize_t writen (int fd, const void *vptr, size_t n)
             if (errno == EINTR)
                 nwritten = 0;   /* and call write() again */
             else
-                return(-1);     /* error */
+                return -1;      /* error */
         }
 
         nleft -= nwritten;
