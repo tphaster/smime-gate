@@ -91,4 +91,5 @@ int smtp_send_command (int sockfd, size_t cmd, struct mail_object *mail);
 int smtp_send_reply (int sockfd, size_t code, const char *msg, size_t msg_len);
 ssize_t smtp_readline (int fd, void *vptr, size_t maxlen);
 int smtp_recv_command (int sockfd, struct smtp_command *cmd);
+int smtp_recv_reply (int sockfd, struct smtp_reply *rply);
 

@@ -345,7 +345,7 @@ int smtp_send_reply (int sockfd, size_t code, const char *msg, size_t msg_len)
                 return 0;
             }
             else {
-                strcpy(rply_line, "555 ");
+                strcpy(rply_line, "554 ");
                 break;
             }
 
@@ -517,6 +517,105 @@ int smtp_recv_command (int sockfd, struct smtp_command *cmd)
 
 int smtp_recv_reply (int sockfd, struct smtp_reply *rply)
 {
+    char *line;
+
+    if (NULL == rply)
+        return NULLPTR; /* NULL pointer dereference */
+
+    line = Calloc(LINE_MAXLEN, sizeof (*line));
+
+    if (smtp_readline(sockfd, line, LINE_MAXLEN) <= 0){
+        free(line);
+        return RCVERROR;   /* receiving error: no data to read or error */
+    }
+
+    bzero(rply, sizeof(*rply));
+
+    if (0 == strncmp("211 ", line, 4)) {
+        rply->code = R211;
+        strncpy(rply->msg, line+4, LINE_MAXLEN-4);
+    }
+    else if (0 == strncmp("220 ", line, 4)) {
+        rply->code = R220;
+        strncpy(rply->msg, line+4, LINE_MAXLEN-4);
+    }
+    else if (0 == strncmp("250 ", line, 4)) {
+        rply->code = R250;
+        strncpy(rply->msg, line+4, LINE_MAXLEN-4);
+    }
+    else if (0 == strncmp("250-", line, 4)) {
+        rply->code = R250E;
+        strncpy(rply->msg, line+4, LINE_MAXLEN-4);
+    }
+    else if (0 == strncmp("251 ", line, 4)) {
+        rply->code = R251;
+        strncpy(rply->msg, line+4, LINE_MAXLEN-4);
+    }
+    else if (0 == strncmp("354 ", line, 4)) {
+        rply->code = R354;
+        strncpy(rply->msg, line+4, LINE_MAXLEN-4);
+    }
+    else if (0 == strncmp("450 ", line, 4)) {
+        rply->code = R450;
+        strncpy(rply->msg, line+4, LINE_MAXLEN-4);
+    }
+    else if (0 == strncmp("451 ", line, 4)) {
+        rply->code = R451;
+        strncpy(rply->msg, line+4, LINE_MAXLEN-4);
+    }
+    else if (0 == strncmp("452 ", line, 4)) {
+        rply->code = R452;
+        strncpy(rply->msg, line+4, LINE_MAXLEN-4);
+    }
+    else if (0 == strncmp("455 ", line, 4)) {
+        rply->code = R455;
+        strncpy(rply->msg, line+4, LINE_MAXLEN-4);
+    }
+    else if (0 == strncmp("502 ", line, 4)) {
+        rply->code = R502;
+        strncpy(rply->msg, line+4, LINE_MAXLEN-4);
+    }
+    else if (0 == strncmp("503 ", line, 4)) {
+        rply->code = R503;
+        strncpy(rply->msg, line+4, LINE_MAXLEN-4);
+    }
+    else if (0 == strncmp("504 ", line, 4)) {
+        rply->code = R504;
+        strncpy(rply->msg, line+4, LINE_MAXLEN-4);
+    }
+    else if (0 == strncmp("550 ", line, 4)) {
+        rply->code = R550;
+        strncpy(rply->msg, line+4, LINE_MAXLEN-4);
+    }
+    else if (0 == strncmp("551 ", line, 4)) {
+        rply->code = R551;
+        strncpy(rply->msg, line+4, LINE_MAXLEN-4);
+    }
+    else if (0 == strncmp("552 ", line, 4)) {
+        rply->code = R552;
+        strncpy(rply->msg, line+4, LINE_MAXLEN-4);
+    }
+    else if (0 == strncmp("553 ", line, 4)) {
+        rply->code = R553;
+        strncpy(rply->msg, line+4, LINE_MAXLEN-4);
+    }
+    else if (0 == strncmp("554 ", line, 4)) {
+        rply->code = R554;
+        strncpy(rply->msg, line+4, LINE_MAXLEN-4);
+    }
+    else if (0 == strncmp("555 ", line, 4)) {
+        rply->code = R555;
+        strncpy(rply->msg, line+4, LINE_MAXLEN-4);
+    }
+    else {
+        rply->code = 0;
+        strncpy(rply->msg, line, LINE_MAXLEN);
+
+        free(line);
+        return NKNOWNCMD;   /* unknown command received */
+    }
+
+    free(line);
     return 0;
 }
 
