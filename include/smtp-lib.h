@@ -17,9 +17,13 @@
 #define NOOP    8
 #define QUIT    9
 
+#define RCPT_N(x)   (4+((x)<<4))
+#define GET_CMD(x)  ((x) & 0xF)
+#define GET_RNO(x)  (((x) & ~0xF)>>4)
+
 /*** SMTP Replies ***/
-#define R211     1  /* (after QUIT) closing connection */
-#define R220     2  /* (on connection start) greeting */
+#define R220     1  /* (on connection start) greeting */
+#define R221     2  /* (after QUIT) closing connection */
 #define R250     3  /* requested mail action okay, completed */
 #define R250E    4  /* same as R250, but to be continued */
 #define R251     5  /* (after RCPT) user not local; will forward to <forward-path> */
@@ -38,6 +42,20 @@
 #define R554    18  /* transaction failed */
 #define R555    19  /* MAIL FROM/RCPT TO parameters not recognized or not implemented */
 
+/*** ESMTP Extensions ***/
+#define NO_EXT  10  /* number of extensions */
+
+#define _8BITMIME    0
+#define DSN          1
+#define ETRN         2
+#define EXPN         3
+#define HELP         4
+#define ONEX         5
+#define PIPELINING   6
+#define VRFY         7
+#define VERB         8
+#define SIZE         9
+
 /*** Constants ***/
 #define DOMAIN_MAXLEN       128
 #define LINE_MAXLEN         256
@@ -46,13 +64,15 @@
 #define START       0
 #define CR_READ     1
 
-/* SMTP Receive Command Errors */
+/* Errors */
 #define NULLPTR     -1
 #define RCVERROR    -2
+#define BADARG      -3
 
-/* SMTP Receive Command Warnings */
-#define BADPARAM     1
-#define NKNOWNCMD    2
+/* Warnings */
+#define RCV_BADPARAM    1
+#define RCV_NKNOWNCMD   2
+#define RCV_NKNOWNRPLY  3
 
 
 /*** Macros ***/
@@ -84,6 +104,12 @@ struct smtp_command {
 struct smtp_reply {
     size_t code;
     char msg[LINE_MAXLEN-4];
+};
+
+/* ESMTP Extensions */
+struct esmtp_ext {
+    size_t ext[NO_EXT];
+    size_t no_ext;
 };
 
 /*** Functions ***/

@@ -4,8 +4,10 @@
  * Author:      Tomasz Pieczerak (tphaster)
  */
 
+#include "smtp-lib.h"
+
 #define SERV_PORT   5555
 
 int smtp_recv_mail(int sockfd);
-int smtp_send_mail(int sockfd);
+int smtp_send_mail (int sockfd, struct mail_object *mail);
 

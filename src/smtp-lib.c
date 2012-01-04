@@ -15,8 +15,9 @@
 int smtp_send_command (int sockfd, size_t cmd, struct mail_object *mail)
 {
     char domain[DOMAIN_MAXLEN], cmd_line[LINE_MAXLEN];
-    size_t i;
     size_t pos = 0;
+    int rcpt_no = GET_RNO(cmd);
+    cmd = GET_CMD(cmd);
 
     switch (cmd) {
         case EHLO:
@@ -42,7 +43,7 @@ int smtp_send_command (int sockfd, size_t cmd, struct mail_object *mail)
 
         case MAIL:
             if (NULL == mail)
-                return -1;  /* NULL pointer dereference */
+                return NULLPTR;  /* NULL pointer dereference */
 
             /* command code */
             strcpy(cmd_line, "MAIL FROM:<");
@@ -60,22 +61,24 @@ int smtp_send_command (int sockfd, size_t cmd, struct mail_object *mail)
 
         case RCPT:
             if (NULL == mail)
-                return -1;  /* NULL pointer dereference*/
+                return NULLPTR;     /* NULL pointer dereference*/
 
-            for (i = 0; i < mail->no_rcpt; ++i) {
-                /* command code */
-                strcpy(cmd_line, "RCPT TO:<");
-                pos = 9;
+            if (rcpt_no < 0 || ((size_t) rcpt_no) > mail->no_rcpt)
+                return BADARG;      /* bad parameter */
 
-                /* sender (Reverse-path) */
-                strncpy(cmd_line+pos, mail->rcpt_to[i], ADDR_MAXLEN);
-                pos += min(ADDR_MAXLEN, strlen(mail->rcpt_to[i]));
+            /* command code */
+            strcpy(cmd_line, "RCPT TO:<");
+            pos = 9;
 
-                /* terminating CRLF */
-                strcpy(cmd_line+pos, ">\r\n");
+            /* sender (Reverse-path) */
+            strncpy(cmd_line+pos, mail->rcpt_to[rcpt_no], ADDR_MAXLEN);
+            pos += min(ADDR_MAXLEN, strlen(mail->rcpt_to[rcpt_no]));
 
-                Writen(sockfd, cmd_line, strlen(cmd_line));
-            }
+            /* terminating CRLF */
+            strcpy(cmd_line+pos, ">\r\n");
+
+            Writen(sockfd, cmd_line, strlen(cmd_line));
+
             break;
 
         case DATA:
@@ -93,7 +96,7 @@ int smtp_send_command (int sockfd, size_t cmd, struct mail_object *mail)
             break;
 
         case VRFY:
-            return -1;  /* not implemented */
+            return BADARG;  /* not implemented */
             break;
 
         case NOOP:
@@ -111,8 +114,7 @@ int smtp_send_command (int sockfd, size_t cmd, struct mail_object *mail)
             break;
 
         default:
-            return -1;  /* no such command */
-            break;
+            return BADARG;  /* no such command */
     }
 
     return 0;
@@ -124,19 +126,6 @@ int smtp_send_reply (int sockfd, size_t code, const char *msg, size_t msg_len)
     size_t pos = 0;
 
     switch (code) {
-        case R211:  /* (after QUIT) closing connection */
-            if (NULL == msg) {
-                /* reply code, text string and terminating <CRLF> */
-                strcpy(rply_line, "211 closing connection, bye\r\n");
-                Writen(sockfd, rply_line, strlen(rply_line));
-                return 0;
-            }
-            else {
-                strcpy(rply_line, "211 ");
-                /* text string is user defined */
-                break;
-            }
-
         case R220:  /* (on connection start) greeting */
             if (NULL == msg) {
                 /* reply code */
@@ -157,6 +146,19 @@ int smtp_send_reply (int sockfd, size_t code, const char *msg, size_t msg_len)
             }
             else {
                 strcpy(rply_line, "220 ");
+                break;
+            }
+
+        case R221:  /* (after QUIT) closing connection */
+            if (NULL == msg) {
+                /* reply code, text string and terminating <CRLF> */
+                strcpy(rply_line, "221 closing connection, bye\r\n");
+                Writen(sockfd, rply_line, strlen(rply_line));
+                return 0;
+            }
+            else {
+                strcpy(rply_line, "221 ");
+                /* text string is user defined */
                 break;
             }
 
@@ -465,7 +467,7 @@ int smtp_recv_command (int sockfd, struct smtp_command *cmd)
         cmd->code = HELO;
         if (strlen(line) < 6) {
             free(line);
-            return BADPARAM;    /* bad parameter */
+            return RCV_BADPARAM;    /* bad parameter */
         }
         strncpy(cmd->data, line+5, DOMAIN_MAXLEN);
     }
@@ -473,7 +475,7 @@ int smtp_recv_command (int sockfd, struct smtp_command *cmd)
         cmd->code = EHLO;
         if (strlen(line) < 6) {
             free(line);
-            return BADPARAM;    /* bad parameter */
+            return RCV_BADPARAM;    /* bad parameter */
         }
         strncpy(cmd->data, line+5, DOMAIN_MAXLEN);
     }
@@ -481,15 +483,15 @@ int smtp_recv_command (int sockfd, struct smtp_command *cmd)
         cmd->code = MAIL;
         if (strlen(line) < 15) {
             free(line);
-            return BADPARAM;    /* bad parameter */
+            return RCV_BADPARAM;    /* bad parameter */
         }
         strncpy(cmd->data, line+10, ADDR_MAXLEN);
     }
     else if (0 == strncmp("RCPT", line, 4)) {
         cmd->code = RCPT;
-        if (strlen(line) < 1333) {
+        if (strlen(line) < 13) {
             free(line);
-            return BADPARAM;    /* bad parameter */
+            return RCV_BADPARAM;    /* bad parameter */
         }
         strncpy(cmd->data, line+8, ADDR_MAXLEN);
     }
@@ -508,7 +510,7 @@ int smtp_recv_command (int sockfd, struct smtp_command *cmd)
         strncpy(cmd->data, line, LINE_MAXLEN);
 
         free(line);
-        return NKNOWNCMD;   /* unknown command received */
+        return RCV_NKNOWNCMD;   /* unknown command received */
     }
 
     free(line);
@@ -531,12 +533,12 @@ int smtp_recv_reply (int sockfd, struct smtp_reply *rply)
 
     bzero(rply, sizeof(*rply));
 
-    if (0 == strncmp("211 ", line, 4)) {
-        rply->code = R211;
+    if (0 == strncmp("220 ", line, 4)) {
+        rply->code = R220;
         strncpy(rply->msg, line+4, LINE_MAXLEN-4);
     }
-    else if (0 == strncmp("220 ", line, 4)) {
-        rply->code = R220;
+    else if (0 == strncmp("221 ", line, 4)) {
+        rply->code = R221;
         strncpy(rply->msg, line+4, LINE_MAXLEN-4);
     }
     else if (0 == strncmp("250 ", line, 4)) {
@@ -612,7 +614,7 @@ int smtp_recv_reply (int sockfd, struct smtp_reply *rply)
         strncpy(rply->msg, line, LINE_MAXLEN);
 
         free(line);
-        return NKNOWNCMD;   /* unknown command received */
+        return RCV_NKNOWNRPLY;  /* unknown command received */
     }
 
     free(line);
