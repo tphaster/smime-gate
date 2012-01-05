@@ -4,12 +4,9 @@
  * Author:      Tomasz Pieczerak (tphaster)
  */
 
-/* TODO
- *  smtp_recv_mail()
- */
-
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "smtp.h"
 #include "system.h"
@@ -122,5 +119,170 @@ int smtp_send_mail (int sockfd, struct mail_object *mail)
     free(cmd);
     free(rply);
     return 0;
+}
+
+int smtp_recv_mail (int sockfd, struct mail_object *mail)
+{
+    size_t i;
+    int state = SMTP_CLEAR;
+    int mail_rcvd = 0;
+    char **temp_rcpt;
+    struct smtp_command *cmd = malloc(sizeof(struct smtp_command));
+
+    smtp_send_reply(sockfd, R220, NULL, 0);
+
+    while (state >= 0) {
+        if (SMTP_DATA == state) {
+            /* TODO: data receipt */
+            state = SMTP_EHLO;
+            mail_rcvd = 1;
+            continue;
+        }
+        else
+            smtp_recv_command(sockfd, cmd);
+
+        switch(state) {
+            case SMTP_CLEAR:
+                if (EHLO == cmd->code || HELO == cmd->code) {
+                    state = SMTP_EHLO;
+                    smtp_send_reply(sockfd, R250, NULL, 0);
+                }
+                else if (MAIL == cmd->code || RCPT == cmd->code ||
+                         DATA == cmd->code) {
+                    smtp_send_reply(sockfd, R503, NULL, 0);
+                }
+                else if (QUIT == cmd->code) {
+                    smtp_send_reply(sockfd, R221, NULL, 0);
+                    state = SMTP_QUIT;
+                }
+                else if (RSET == cmd->code || NOOP == cmd->code)
+                    smtp_send_reply(sockfd, R250, NULL, 0);
+                else if (VRFY == cmd->code)
+                    smtp_send_reply(sockfd, R252, NULL, 0);
+                else
+                    smtp_send_reply(sockfd, R500, NULL, 0);
+
+                break;
+
+            case SMTP_EHLO:
+                if (EHLO == cmd->code || HELO == cmd->code ||
+                        RCPT == cmd->code || DATA == cmd->code ) {
+                    smtp_send_reply(sockfd, R503, NULL, 0);
+                }
+                else if (MAIL == cmd->code) {
+                    mail->mail_from = malloc(strlen(cmd->data)+1);
+                    strcpy(mail->mail_from, cmd->data);
+                    smtp_send_reply(sockfd, R250, NULL, 0);
+                }
+                else if (QUIT == cmd->code) {
+                    smtp_send_reply(sockfd, R221, NULL, 0);
+                    state = SMTP_QUIT;
+                }
+                else if (RSET == cmd->code || NOOP == cmd->code)
+                    smtp_send_reply(sockfd, R250, NULL, 0);
+                else if (VRFY == cmd->code)
+                    smtp_send_reply(sockfd, R252, NULL, 0);
+                else
+                    smtp_send_reply(sockfd, R500, NULL, 0);
+                break;
+
+            case SMTP_MAIL:
+                if (EHLO == cmd->code || HELO == cmd->code ||
+                    MAIL == cmd->code || DATA == cmd->code ) {
+                    smtp_send_reply(sockfd, R503, NULL, 0);
+                }
+                else if (RCPT == cmd->code) {
+                    state = SMTP_RCPT;
+                    mail->rcpt_to = malloc(sizeof(char *));
+                    mail->rcpt_to[0] = malloc(strlen(cmd->data));
+                    strcpy(mail->rcpt_to[0], cmd->data);
+                    mail->no_rcpt = 1;
+                    smtp_send_reply(sockfd, R250, NULL, 0);
+                }
+                else if (QUIT == cmd->code) {
+                    smtp_send_reply(sockfd, R221, NULL, 0);
+                    free(mail->mail_from);
+                    mail->mail_from = NULL;
+                    state = SMTP_QUIT;
+                }
+                else if (RSET == cmd->code) {
+                    free(mail->mail_from);
+                    mail->mail_from = NULL;
+                    smtp_send_reply(sockfd, R250, NULL, 0);
+                }
+                else if (NOOP == cmd->code)
+                    smtp_send_reply(sockfd, R250, NULL, 0);
+                else if (VRFY == cmd->code)
+                    smtp_send_reply(sockfd, R252, NULL, 0);
+                else
+                    smtp_send_reply(sockfd, R500, NULL, 0);
+                break;
+
+            case SMTP_RCPT:
+                if (EHLO == cmd->code || HELO == cmd->code ||
+                    MAIL == cmd->code) {
+                    smtp_send_reply(sockfd, R503, NULL, 0);
+                }
+                else if (RCPT == cmd->code) {
+                    temp_rcpt = mail->rcpt_to;
+                    mail->rcpt_to = malloc((mail->no_rcpt+1) * sizeof(char *));
+                    for (i = 0; i < mail->no_rcpt; ++i)
+                        mail->rcpt_to[i] = temp_rcpt[i];
+                    free(temp_rcpt);
+                    temp_rcpt = NULL;
+
+                    mail->rcpt_to[mail->no_rcpt] = malloc(strlen(cmd->data));
+                    strcpy(mail->rcpt_to[mail->no_rcpt], cmd->data);
+                    mail->no_rcpt += 1;
+                    smtp_send_reply(sockfd, R250, NULL, 0);
+                }
+                else if (DATA == cmd->code) {
+                    state = SMTP_DATA;
+                    smtp_send_reply(sockfd, R354, NULL, 0);
+                }
+                else if (QUIT == cmd->code) {
+                    smtp_send_reply(sockfd, R221, NULL, 0);
+
+                    free(mail->mail_from);
+                    mail->mail_from = NULL;
+
+                    for (i = 0; i < mail->no_rcpt; ++i)
+                        free(mail->rcpt_to[i]);
+                    free(mail->rcpt_to);
+                    mail->rcpt_to = NULL;
+
+                    state = SMTP_QUIT;
+                }
+                else if (RSET == cmd->code) {
+                    free(mail->mail_from);
+                    mail->mail_from = NULL;
+
+                    for (i = 0; i < mail->no_rcpt; ++i)
+                        free(mail->rcpt_to[i]);
+                    free(mail->rcpt_to);
+                    mail->rcpt_to = NULL;
+
+                    smtp_send_reply(sockfd, R250, NULL, 0);
+                }
+                else if (NOOP == cmd->code)
+                    smtp_send_reply(sockfd, R250, NULL, 0);
+                else if (VRFY == cmd->code)
+                    smtp_send_reply(sockfd, R252, NULL, 0);
+                else
+                    smtp_send_reply(sockfd, R500, NULL, 0);
+
+                break;
+
+            default:
+                /* this can't happen */;
+        }
+    }
+
+    close(sockfd);
+
+    if (mail_rcvd)
+        return 0;
+    else
+        return RCVERROR;
 }
 

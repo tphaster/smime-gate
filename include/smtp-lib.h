@@ -27,20 +27,22 @@
 #define R250     3  /* requested mail action okay, completed */
 #define R250E    4  /* same as R250, but to be continued */
 #define R251     5  /* (after RCPT) user not local; will forward to <forward-path> */
-#define R354     6  /* (after DATA) start mail input; end with <CRLF>.<CRLF> */
-#define R450     7  /* requested mail action not taken: mailbox unavailable */
-#define R451     8  /* requested action aborted: local error in processing */
-#define R452     9  /* requested action not taken: insufficient system storage */
-#define R455    10  /* server unable to accommodate parameters */
-#define R502    11  /* (after EHLO) command not implemented */
-#define R503    12  /* bad sequence of commands */
-#define R504    13  /* (after HELO/EHLO) command parameter not implemented */
-#define R550    14  /* requested action not taken: mailbox unavailable */
-#define R551    15  /* (after RCPT) user not local; please try <forward-path> */
-#define R552    16  /* requested mail action aborted: exceeded storage allocation */
-#define R553    17  /* (after RCPT) requested action not taken: mailbox name not allowed */
-#define R554    18  /* transaction failed */
-#define R555    19  /* MAIL FROM/RCPT TO parameters not recognized or not implemented */
+#define R252     6  /* cannot VRFY user, but will accept message and attempt delivery */
+#define R354     7  /* (after DATA) start mail input; end with <CRLF>.<CRLF> */
+#define R450     8  /* requested mail action not taken: mailbox unavailable */
+#define R451     9  /* requested action aborted: local error in processing */
+#define R452    10  /* requested action not taken: insufficient system storage */
+#define R455    11  /* server unable to accommodate parameters */
+#define R500    12  /* syntax error, command unrecognized */
+#define R502    13  /* (after EHLO) command not implemented */
+#define R503    14  /* bad sequence of commands */
+#define R504    15  /* (after HELO/EHLO) command parameter not implemented */
+#define R550    16  /* requested action not taken: mailbox unavailable */
+#define R551    17  /* (after RCPT) user not local; please try <forward-path> */
+#define R552    18  /* requested mail action aborted: exceeded storage allocation */
+#define R553    19  /* (after RCPT) requested action not taken: mailbox name not allowed */
+#define R554    20  /* transaction failed */
+#define R555    21  /* MAIL FROM/RCPT TO parameters not recognized or not implemented */
 
 /*** ESMTP Extensions ***/
 #define NO_EXT  10  /* number of extensions */
@@ -55,6 +57,15 @@
 #define VRFY         7
 #define VERB         8
 #define SIZE         9
+
+/*** SMTP Server States ***/
+#define SMTP_CLEAR  0
+#define SMTP_EHLO   1
+#define SMTP_MAIL   2
+#define SMTP_RCPT   3
+#define SMTP_DATA   4
+#define SMTP_QUIT   -1
+
 
 /*** Constants ***/
 #define DOMAIN_MAXLEN       128

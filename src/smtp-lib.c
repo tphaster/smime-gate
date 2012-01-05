@@ -195,6 +195,19 @@ int smtp_send_reply (int sockfd, size_t code, const char *msg, size_t msg_len)
                 break;
             }
 
+        case R252:  /* cannot VRFY user, but will accept message
+                       and attempt delivery */
+            if (NULL == msg) {
+                strcpy(rply_line, "252 cannot VRFY user, but will "
+                                  "accept message and attempt delivery\r\n");
+                Writen(sockfd, rply_line, strlen(rply_line));
+                return 0;
+            }
+            else {
+                strcpy(rply_line, "252 ");
+                break;
+            }
+
         case R354:  /* (after DATA) start mail input; end with <CRLF>.<CRLF> */
             if (NULL == msg) {
                 strcpy(rply_line, "354 Start mail input; "
@@ -253,6 +266,17 @@ int smtp_send_reply (int sockfd, size_t code, const char *msg, size_t msg_len)
             }
             else {
                 strcpy(rply_line, "455  ");
+                break;
+            }
+
+        case R500:  /* syntax error, command unrecognized */
+            if (NULL == msg) {
+                strcpy(rply_line, "500 Syntax error, command unrecognized\r\n");
+                Writen(sockfd, rply_line, strlen(rply_line));
+                return 0;
+            }
+            else {
+                strcpy(rply_line, "500 ");
                 break;
             }
 
@@ -463,7 +487,7 @@ int smtp_recv_command (int sockfd, struct smtp_command *cmd)
 
     bzero(cmd->data, sizeof(cmd->data));
 
-    if (0 == strncmp("HELO", line, 4)) {
+    if (0 == strncasecmp("HELO", line, 4)) {
         cmd->code = HELO;
         if (strlen(line) < 6) {
             free(line);
@@ -471,7 +495,7 @@ int smtp_recv_command (int sockfd, struct smtp_command *cmd)
         }
         strncpy(cmd->data, line+5, DOMAIN_MAXLEN);
     }
-    else if (0 == strncmp("EHLO", line, 4)) {
+    else if (0 == strncasecmp("EHLO", line, 4)) {
         cmd->code = EHLO;
         if (strlen(line) < 6) {
             free(line);
@@ -479,7 +503,7 @@ int smtp_recv_command (int sockfd, struct smtp_command *cmd)
         }
         strncpy(cmd->data, line+5, DOMAIN_MAXLEN);
     }
-    else if (0 == strncmp("MAIL", line, 4)) {
+    else if (0 == strncasecmp("MAIL", line, 4)) {
         cmd->code = MAIL;
         if (strlen(line) < 15) {
             free(line);
@@ -487,7 +511,7 @@ int smtp_recv_command (int sockfd, struct smtp_command *cmd)
         }
         strncpy(cmd->data, line+10, ADDR_MAXLEN);
     }
-    else if (0 == strncmp("RCPT", line, 4)) {
+    else if (0 == strncasecmp("RCPT", line, 4)) {
         cmd->code = RCPT;
         if (strlen(line) < 13) {
             free(line);
@@ -495,15 +519,15 @@ int smtp_recv_command (int sockfd, struct smtp_command *cmd)
         }
         strncpy(cmd->data, line+8, ADDR_MAXLEN);
     }
-    else if (0 == strncmp("DATA", line, 4))
+    else if (0 == strncasecmp("DATA", line, 4))
         cmd->code = DATA;
-    else if (0 == strncmp("RSET", line, 4))
+    else if (0 == strncasecmp("RSET", line, 4))
         cmd->code = RSET;
-    else if (0 == strncmp("VRFY", line, 4))
+    else if (0 == strncasecmp("VRFY", line, 4))
         cmd->code = VRFY;
-    else if (0 == strncmp("NOOP", line, 4))
+    else if (0 == strncasecmp("NOOP", line, 4))
         cmd->code = NOOP;
-    else if (0 == strncmp("QUIT", line, 4))
+    else if (0 == strncasecmp("QUIT", line, 4))
         cmd->code = QUIT;
     else {
         cmd->code = 0;
@@ -553,6 +577,10 @@ int smtp_recv_reply (int sockfd, struct smtp_reply *rply)
         rply->code = R251;
         strncpy(rply->msg, line+4, LINE_MAXLEN-4);
     }
+    else if (0 == strncmp("252 ", line, 4)) {
+        rply->code = R252;
+        strncpy(rply->msg, line+4, LINE_MAXLEN-4);
+    }
     else if (0 == strncmp("354 ", line, 4)) {
         rply->code = R354;
         strncpy(rply->msg, line+4, LINE_MAXLEN-4);
@@ -571,6 +599,10 @@ int smtp_recv_reply (int sockfd, struct smtp_reply *rply)
     }
     else if (0 == strncmp("455 ", line, 4)) {
         rply->code = R455;
+        strncpy(rply->msg, line+4, LINE_MAXLEN-4);
+    }
+    else if (0 == strncmp("500 ", line, 4)) {
+        rply->code = R500;
         strncpy(rply->msg, line+4, LINE_MAXLEN-4);
     }
     else if (0 == strncmp("502 ", line, 4)) {
