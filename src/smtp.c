@@ -5,6 +5,7 @@
  */
 
 #include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -405,10 +406,25 @@ ssize_t smtp_recv_mail_data (int sockfd, char **buf_ptr, size_t *buf_size)
 
 int save_mail_to_disk (struct mail_object *mail, char *filename)
 {
+    FILE *fp;
+    size_t i;
+
+    if ((fp = fopen(filename, "w")) == NULL)
+        return -1;  /* can't open file */
+
+    fprintf(fp, "%s\n", mail->mail_from);
+    fprintf(fp, "%d\n", mail->no_rcpt);
+
+    for (i = 0; i < mail->no_rcpt; ++i)
+        fprintf(fp, "%s\n", mail->rcpt_to[i]);
+
+    for (i = 0; i < mail->data_size; ++i)
+        putc(mail->data[i], fp);
+
     return 0;
 }
 
-int load_mail_from_disk (char *filename struct mail_object *mail)
+int load_mail_from_disk (char *filename, struct mail_object *mail)
 {
     return 0;
 }
