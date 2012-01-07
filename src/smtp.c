@@ -4,6 +4,7 @@
  * Author:      Tomasz Pieczerak (tphaster)
  */
 
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -11,16 +12,25 @@
 #include "smtp.h"
 #include "system.h"
 
+#define DSTART       0
+#define DDOT_READ    1
+#define DCR_READ     2
+
+#define MAIL_START_LEN  512
+
+ssize_t smtp_recv_mail_data (int sockfd, char **buf_ptr, size_t *buf_size);
+int save_mail_to_disk (struct mail_object *mail, char *filename);
+int load_mail_from_disk (char *filename, struct mail_object *mail);
+
+
 int smtp_send_mail (int sockfd, struct mail_object *mail)
 {
     size_t i;
     struct esmtp_ext ext;
-    struct smtp_command *cmd = Malloc(sizeof(struct smtp_command));
     struct smtp_reply *rply = Malloc(sizeof(struct smtp_reply));
 
     smtp_recv_reply(sockfd, rply);
     if (R220 != rply->code) {
-        free(cmd);
         free(rply);
         return RCVERROR;
     }
@@ -62,7 +72,6 @@ int smtp_send_mail (int sockfd, struct mail_object *mail)
         else if (R250 == rply->code)
             break;
         else {
-            free(cmd);
             free(rply);
             return RCVERROR;   /* something goes wrong... */
         }
@@ -72,7 +81,6 @@ int smtp_send_mail (int sockfd, struct mail_object *mail)
     smtp_send_command(sockfd, MAIL, mail);
     smtp_recv_reply(sockfd, rply);
     if (R250 != rply->code) {
-        free(cmd);
         free(rply);
         return RCVERROR;
     }
@@ -82,7 +90,6 @@ int smtp_send_mail (int sockfd, struct mail_object *mail)
         smtp_send_command(sockfd, RCPT_N(i), mail);
         smtp_recv_reply(sockfd, rply);
         if (R250 != rply->code) {
-            free(cmd);
             free(rply);
             return RCVERROR;
         }
@@ -92,17 +99,15 @@ int smtp_send_mail (int sockfd, struct mail_object *mail)
     smtp_send_command(sockfd, DATA, NULL);
     smtp_recv_reply(sockfd, rply);
     if (R354 != rply->code) {
-        free(cmd);
         free(rply);
         return RCVERROR;
     }
 
     /* Sending data */
-    /*Writen(sockfd, mail->data, strlen(mail->data));*/
+    Writen(sockfd, mail->data, mail->data_size);
     Writen(sockfd, ".\r\n", 3);     /* end of message */
     smtp_recv_reply(sockfd, rply);
     if (R250 != rply->code) {
-        free(cmd);
         free(rply);
         return RCVERROR;
     }
@@ -111,19 +116,18 @@ int smtp_send_mail (int sockfd, struct mail_object *mail)
     smtp_send_command(sockfd, QUIT, NULL);
     smtp_recv_reply(sockfd, rply);
     if (R221 != rply->code) {
-        free(cmd);
         free(rply);
         return RCVERROR;
     }
 
-    free(cmd);
     free(rply);
     return 0;
 }
 
-int smtp_recv_mail (int sockfd, struct mail_object *mail)
+int smtp_recv_mail (int sockfd, struct mail_object *mail, char *filename)
 {
     size_t i;
+    ssize_t data_size;
     int state = SMTP_CLEAR;
     int mail_rcvd = 0;
     char **temp_rcpt;
@@ -133,9 +137,22 @@ int smtp_recv_mail (int sockfd, struct mail_object *mail)
 
     while (state >= 0) {
         if (SMTP_DATA == state) {
-            /* TODO: data receipt */
+            data_size = smtp_recv_mail_data(sockfd, &(mail->data), NULL);
+            if (data_size <= 0) {
+                close(sockfd);
+                free(cmd);
+                return RCVERROR;
+            }
+
+            mail->data_size = data_size;
+            if (0 == save_mail_to_disk(mail, filename)) {
+                smtp_send_reply(sockfd, R250, NULL, 0);
+                mail_rcvd = 1;
+            }
+            else
+                smtp_send_reply(sockfd, R552, NULL, 0);
+
             state = SMTP_EHLO;
-            mail_rcvd = 1;
             continue;
         }
         else
@@ -170,9 +187,14 @@ int smtp_recv_mail (int sockfd, struct mail_object *mail)
                     smtp_send_reply(sockfd, R503, NULL, 0);
                 }
                 else if (MAIL == cmd->code) {
-                    mail->mail_from = malloc(strlen(cmd->data)+1);
-                    strcpy(mail->mail_from, cmd->data);
-                    smtp_send_reply(sockfd, R250, NULL, 0);
+                    if (0 == mail_rcvd) {
+                        state = SMTP_MAIL;
+                        mail->mail_from = malloc(strlen(cmd->data)+1);
+                        strcpy(mail->mail_from, cmd->data);
+                        smtp_send_reply(sockfd, R250, NULL, 0);
+                    }
+                    else
+                        smtp_send_reply(sockfd, R552, NULL, 0);
                 }
                 else if (QUIT == cmd->code) {
                     smtp_send_reply(sockfd, R221, NULL, 0);
@@ -194,7 +216,7 @@ int smtp_recv_mail (int sockfd, struct mail_object *mail)
                 else if (RCPT == cmd->code) {
                     state = SMTP_RCPT;
                     mail->rcpt_to = malloc(sizeof(char *));
-                    mail->rcpt_to[0] = malloc(strlen(cmd->data));
+                    mail->rcpt_to[0] = malloc(strlen(cmd->data)+1);
                     strcpy(mail->rcpt_to[0], cmd->data);
                     mail->no_rcpt = 1;
                     smtp_send_reply(sockfd, R250, NULL, 0);
@@ -231,7 +253,7 @@ int smtp_recv_mail (int sockfd, struct mail_object *mail)
                     free(temp_rcpt);
                     temp_rcpt = NULL;
 
-                    mail->rcpt_to[mail->no_rcpt] = malloc(strlen(cmd->data));
+                    mail->rcpt_to[mail->no_rcpt] = malloc(strlen(cmd->data)+1);
                     strcpy(mail->rcpt_to[mail->no_rcpt], cmd->data);
                     mail->no_rcpt += 1;
                     smtp_send_reply(sockfd, R250, NULL, 0);
@@ -279,10 +301,115 @@ int smtp_recv_mail (int sockfd, struct mail_object *mail)
     }
 
     close(sockfd);
+    free(cmd);
 
     if (mail_rcvd)
         return 0;
     else
         return RCVERROR;
+}
+
+/* WARNING! Function buf_read() is not safe for threads */
+static ssize_t buf_read (int fd, char *ptr)
+{
+    static int read_cnt = 0;
+    static char *read_ptr;
+    static char read_buf[LINE_MAXLEN];
+
+    /* if buffer is empty */
+    if (read_cnt <= 0) {
+again:
+        /* put available data into buffer */
+        if ( (read_cnt = read(fd, read_buf, sizeof(read_buf))) < 0) {
+            if (errno == EINTR)
+                goto again;
+            return -1;  /* reading error, check errno for more information */
+        }
+        else if (read_cnt == 0)
+            return 0;   /* there is nothing more to read */
+
+        read_ptr = read_buf;
+    }
+
+    read_cnt--;
+    *ptr = *read_ptr++;
+
+    return 1;   /* one character read */
+}
+
+ssize_t smtp_recv_mail_data (int sockfd, char **buf_ptr, size_t *buf_size)
+{
+    int rc, state;
+    size_t n, buflen;
+    char c, *ptr, *buf, *temp_buf;
+
+    state = DSTART;
+    buf = malloc(MAIL_START_LEN * sizeof(char));
+    ptr = buf;
+    buflen = MAIL_START_LEN;
+    n = 0;
+
+    for (;;) {
+        if ( (rc = buf_read(sockfd, &c)) == 1) {
+            *ptr++ = c;
+
+            if (DCR_READ == state) {
+                if (c == '\n') {    /* end of mail */
+                    n -= 3; /* ".CRLF" isn't a part of mail */
+                    break;
+                }
+                else
+                    state = DSTART;
+            }
+            else if (DDOT_READ == state) {
+                if (c == '\r') {
+                    state = CR_READ;    /* CR read; next turn check for LF */
+                    continue;
+                }
+                else
+                    state = DSTART;
+            }
+            else if (c == '.')
+                state = DDOT_READ;   /* "." read; check for CR in next turn */
+        }
+        else {
+            *buf_ptr = NULL;
+            *buf_size = 0;
+            free(buf);
+
+            if (rc == 1)
+                return 0;   /* EOF, not enough data */
+            else
+                return -1;  /* error, errno set by read() */
+        }
+
+        ++n;
+
+        if (n == buflen) {
+            buflen += MAIL_START_LEN;
+            temp_buf = buf;
+            buf = malloc(buflen * sizeof(char));
+            ptr = buf+n;
+            memcpy(buf, temp_buf, n);
+
+            free(temp_buf);
+            temp_buf = NULL;
+        }
+    }
+
+    *buf_ptr = buf;
+    *buf_size = buflen;
+
+    return n;
+}
+
+int save_mail_to_disk (struct mail_object *mail, char *filename)
+{
+    return 0;
+}
+
+int load_mail_from_disk (char *filename struct mail_object *mail)
+{
+    return 0;
 }
 

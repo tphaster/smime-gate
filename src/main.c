@@ -42,8 +42,8 @@ int main (int argc, char **argv)
         }
 
         if ( (childpid = Fork()) == 0) {    /* child process */
-            Close(listenfd);        /* close listening socket */
-            smtp_recv_mail(connfd); /* process the request */
+            Close(listenfd);            /* close listening socket */
+            _smtp_recv_mail(connfd);    /* process the request */
             exit(0);
         }
         Close(connfd);  /* parent closes connected socket */

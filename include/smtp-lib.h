@@ -103,6 +103,7 @@ struct mail_object {
     char **rcpt_to;
     size_t no_rcpt;
     char *data;
+    size_t data_size;
 };
 
 /* SMTP Command */
