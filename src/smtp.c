@@ -20,8 +20,6 @@
 #define MAIL_START_LEN  512
 
 ssize_t smtp_recv_mail_data (int sockfd, char **buf_ptr, size_t *buf_size);
-int save_mail_to_disk (struct mail_object *mail, char *filename);
-int load_mail_from_disk (char *filename, struct mail_object *mail);
 
 
 int smtp_send_mail (int sockfd, struct mail_object *mail)
@@ -404,7 +402,7 @@ ssize_t smtp_recv_mail_data (int sockfd, char **buf_ptr, size_t *buf_size)
     return n;
 }
 
-int save_mail_to_disk (struct mail_object *mail, char *filename)
+int save_mail_to_disk (struct mail_object *mail, const char *filename)
 {
     FILE *fp;
     size_t i;
@@ -421,11 +419,74 @@ int save_mail_to_disk (struct mail_object *mail, char *filename)
     for (i = 0; i < mail->data_size; ++i)
         putc(mail->data[i], fp);
 
+    fclose(fp);
+
     return 0;
 }
 
-int load_mail_from_disk (char *filename, struct mail_object *mail)
+int load_mail_from_disk (const char *filename, struct mail_object *mail)
 {
+    FILE *fp;
+    char buf[LINE_MAXLEN];
+    size_t len, i;
+    long pos;
+
+    if ((fp = fopen(filename, "r")) == NULL)
+        return -1;  /* can't open file */
+
+    /* get MAIL FROM: */
+    if (fgets(buf, LINE_MAXLEN, fp) == NULL) {
+        fclose(fp);
+        bzero(mail, sizeof(struct mail_object));
+        return -1;  /* error or EOF */
+    }
+
+    len = strlen(buf)-1;
+    buf[len] = '\0';
+    mail->mail_from = malloc(len);
+    strncpy(mail->mail_from, buf, len);
+
+    /* get RCPT TO: */
+    if (fgets(buf, LINE_MAXLEN, fp) == NULL) {
+        fclose(fp);
+        free(mail->mail_from);
+        bzero(mail, sizeof(struct mail_object));
+        return -1;  /* error or EOF */
+    }
+
+    mail->no_rcpt = atoi(buf);
+    mail->rcpt_to = malloc(mail->no_rcpt * sizeof(char *));
+    bzero(mail->rcpt_to, mail->no_rcpt * sizeof(char *));
+
+    for (i = 0; i < mail->no_rcpt; ++i) {
+        if (fgets(buf, LINE_MAXLEN, fp) == NULL) {
+            size_t j;
+            fclose(fp);
+            free(mail->mail_from);
+            for (j = 0; j < mail->no_rcpt; ++j) {
+                if (NULL != mail->rcpt_to[j])
+                    free(mail->rcpt_to[j]);
+            }
+            free(mail->rcpt_to);
+            bzero(mail, sizeof(struct mail_object));
+            return -1;  /* error or EOF */
+        }
+
+        len = strlen(buf)-1;
+        buf[len] = '\0';
+        mail->rcpt_to[i] = malloc(len);
+        strncpy(mail->rcpt_to[i], buf, len);
+    }
+
+    /* get DATA */
+    pos = ftell(fp);
+    fseek(fp, 0, SEEK_END);
+    mail->data_size = ftell(fp)-pos;
+    fseek(fp, pos, SEEK_SET);
+
+    mail->data = malloc(mail->data_size);
+    fread(mail->data, sizeof(char), mail->data_size, fp);
+
     return 0;
 }
 
