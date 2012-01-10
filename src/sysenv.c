@@ -15,9 +15,9 @@
 
 #define MAXFD   64
 
-extern int deamon_proc;
+extern int daemon_proc;
 
-void deamonize (const char *pname, int facility)
+void daemonize (const char *pname, int facility)
 {
     int i;
     pid_t pid;
@@ -31,7 +31,7 @@ void deamonize (const char *pname, int facility)
     if ( (pid = Fork()) != 0)
         exit(0);
 
-    deamon_proc = 1;
+    daemon_proc = 1;
     chdir("/");
     umask(0);
 

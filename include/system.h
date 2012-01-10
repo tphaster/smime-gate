@@ -24,10 +24,10 @@ typedef void    Sigfunc(int);   /* for signal handlers */
 #define SA      struct sockaddr
 
 /* Miscellaneous constants */
-#define MAXLINE         4096    /*  max text line length */
-#define MAXSOCKADDR      128    /*  max socket address structure size */
-#define BUFFSIZE        8192    /*  buffer size for reads and writes */
-#define LISTENQ         1024    /* default value fo backlog in listen() */
+#define MAXLINE         4096    /* max text line length */
+#define MAXSOCKADDR      128    /* max socket address structure size */
+#define BUFFSIZE        8192    /* buffer size for reads and writes */
+#define LISTENQ         1024    /* default value of backlog in listen() */
 
 /* Error reporting functions */
 void err_ret (const char *fmt, ...);
@@ -68,11 +68,6 @@ pid_t Wait (int *iptr);
 pid_t Waitpid (pid_t pid, int *iptr, int options);
 void Write (int fd, void *ptr, size_t nbytes);
 
-/* Signal wrapper functions */
-Sigfunc *signal (int signo, Sigfunc *func);
-Sigfunc *Signal (int signo, Sigfunc *func);
-void sig_chld (int signo);
-
 /* Socket wrapper functions */
 int Accept (int fd, struct sockaddr *sa, socklen_t *salenptr);
 void Bind (int fd, const struct sockaddr *sa, socklen_t salen);
@@ -107,4 +102,8 @@ void Socketpair (int family, int type, int protocol, int *fd);
 ssize_t Readn (int fd, void *ptr, size_t nbytes);
 void Writen (int fd, void *ptr, size_t nbytes);
 ssize_t Readline (int fd, void *ptr, size_t maxlen);
+
+/* System environment functions */
+void daemonize (const char *pname, int facility);
+Sigfunc *Signal (int signo, Sigfunc *func);
 
