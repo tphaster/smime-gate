@@ -21,7 +21,7 @@ int main (int argc, char **argv)
 
     /* parse command line arguments and load config */
     parse_args(argc, argv);
-    /*load_config();*/
+    load_config();
 
     /* become a daemon, if it is set so*/
     if (0 != conf.daemon)
@@ -34,7 +34,7 @@ int main (int argc, char **argv)
     bzero(&servaddr, sizeof(servaddr));
     servaddr.sin_family      = AF_INET;
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    servaddr.sin_port        = htons(SERV_PORT);
+    servaddr.sin_port        = htons(conf.smtp_port);
 
     Bind(listenfd, (SA *) &servaddr, sizeof(servaddr));
 

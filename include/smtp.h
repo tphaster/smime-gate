@@ -6,8 +6,6 @@
 
 #include "smtp-lib.h"
 
-#define SERV_PORT   5555
-
 int smtp_recv_mail (int sockfd, struct mail_object *mail, char *filename);
 int smtp_send_mail (int sockfd, struct mail_object *mail);
 int save_mail_to_disk (struct mail_object *mail, const char *filename);

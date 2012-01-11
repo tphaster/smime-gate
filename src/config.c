@@ -199,12 +199,13 @@ void parse_args (int argc, char **argv)
         len = strlen(DEFAULT_CONFIG_FILE)+1;
         conf.config_file = Malloc(len);
         strncpy(conf.config_file, DEFAULT_CONFIG_FILE, len);
+        printf("Using default configuration file '%s'.", conf.config_data)
     }
     /* check if set config file is readable */
     if (0 != access(conf.config_file, R_OK)) {
-        printf("Can't read %s file (given in 'config' option).\n", conf.config_file);
-        usage();
-        exit(1);
+        printf("Can't read '%s' configuration file.\n", conf.config_file);
+        free(conf.config_file);
+        conf.config_file = NULL;
     }
 
     /* load default rules file, if none was set */
@@ -214,10 +215,75 @@ void parse_args (int argc, char **argv)
         strncpy(conf.rules_file, DEFAULT_RULES_FILE, len);
     }
     /* check if set rules file is readable */
-    if (0 != access(conf.rules_file, R_OK)) {
+    else if (0 != access(conf.rules_file, R_OK)) {
         printf("Can't read %s file (given in 'rules' option).\n", conf.rules_file);
         usage();
         exit(1);
     }
+}
+
+/* load_config - load configuration from config and rules file */
+void load_config (void)
+{
+    FILE *config, *rules;
+    char buf[CONF_MAXLEN];
+    size_t len, line_cnt;
+
+    /* load program configuration */
+    if (NULL == conf.config_file ||
+        NULL == (config = fopen(conf.config_file, "r")))
+    {
+        /* load default config */
+        conf.smtp_port = DEFAULT_SMTP_PORT;
+        printf("Loaded default configuration.\n");
+    }
+    else {
+        line_cnt = 0;
+
+        while (fgets(buf, CONF_MAXLEN, config) != NULL) {
+            ++line_cnt;
+
+            if ('#' == buf[0] || '\n' == buf[0])  /* comment or empty line */
+                continue;
+            else if (0 == strncmp("smtp_port = ", buf, 12))   /* SMTP Port */
+                conf.smtp_port = atoi(buf+12);
+            else if (0 == strncmp("rules = ", buf, 8)) { /* rules location */
+                if (NULL != conf.rules_file)
+                    free(conf.rules_file);
+                len = strlen(buf+8)+1;
+                conf.rules_file = Malloc(len);
+                strncpy(conf.rules_file, buf+8, len);
+            }
+            else
+                printf("Syntax error in config file on line %d.\n", line_cnt);
+        }
+
+        fclose(config);
+    }
+
+    /* load encryption/signing rules */
+    if (NULL == (rules = fopen(conf.rules_file, "r"))) {
+        printf("Can't read '%s' rules file.\n", conf.rules_file);
+        exit(1);
+    }
+
+    line_cnt = 0;
+
+    while (fgets(buf, CONF_MAXLEN, config) != NULL) {
+        ++line_cnt;
+
+        if ('#' == buf[0] || '\n' == buf[0])  /* comment or empty line */
+            continue;
+        else if (0 == strncmp("IN ", buf, 3)) {     /* incoming rule */
+
+        }
+        else if  (0 == strncmp("OUT ", buf, 4)) {   /* outgoing rule */
+
+        }
+        else
+            printf("Syntax error in rules file on line %d.\n", line_cnt);
+    }
+
+    fclose(rules);
 }
 
