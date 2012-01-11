@@ -44,7 +44,7 @@ Sigfunc *Signal (int signo, Sigfunc *func)
     return sigfunc;
 }
 
-void sig_chld (int signo)
+void sig_chld (int signo __attribute__((__unused__)))
 {
     pid_t pid;
     int stat;

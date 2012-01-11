@@ -199,7 +199,7 @@ void parse_args (int argc, char **argv)
         len = strlen(DEFAULT_CONFIG_FILE)+1;
         conf.config_file = Malloc(len);
         strncpy(conf.config_file, DEFAULT_CONFIG_FILE, len);
-        printf("Using default configuration file '%s'.", conf.config_data)
+        printf("Using default configuration file '%s'.\n", conf.config_file);
     }
     /* check if set config file is readable */
     if (0 != access(conf.config_file, R_OK)) {
@@ -222,12 +222,23 @@ void parse_args (int argc, char **argv)
     }
 }
 
+/* Rules processing states */
+#define FAIL   -1       /* failure */
+#define DONE    0       /* done */
+#define ADDR    1       /* searching for mail address */
+#define DOM     2       /* searching for domain */
+#define ACTN    3       /* searching for action */
+#define EKEY    4       /* searching for encryption key */
+#define SKEY    5       /* searching for sign key */
+#define KEY     6       /* searching for sign or encrypt key */
+
 /* load_config - load configuration from config and rules file */
 void load_config (void)
 {
     FILE *config, *rules;
-    char buf[CONF_MAXLEN];
-    size_t len, line_cnt;
+    char buf[CONF_MAXLEN], *tok, *beg;
+    size_t len, line_cnt, irule_cnt, orule_cnt;
+    int state;
 
     /* load program configuration */
     if (NULL == conf.config_file ||
@@ -250,9 +261,11 @@ void load_config (void)
             else if (0 == strncmp("rules = ", buf, 8)) { /* rules location */
                 if (NULL != conf.rules_file)
                     free(conf.rules_file);
+
                 len = strlen(buf+8)+1;
                 conf.rules_file = Malloc(len);
                 strncpy(conf.rules_file, buf+8, len);
+                conf.rules_file[len-2] = '\0';
             }
             else
                 printf("Syntax error in config file on line %d.\n", line_cnt);
@@ -268,17 +281,115 @@ void load_config (void)
     }
 
     line_cnt = 0;
+    conf.out_rules_size = 0;
+    conf.in_rules_size = 0;
 
-    while (fgets(buf, CONF_MAXLEN, config) != NULL) {
+    /* count incoming/outgoing rules */
+    while (fgets(buf, CONF_MAXLEN, rules) != NULL) {
+        ++line_cnt;
+
+        if ('#' == buf[0] || '\n' == buf[0])  /* comment or empty line */
+            continue;
+        else if (0 == strncmp("IN ", buf, 3))   /* incoming rule */
+            conf.out_rules_size += 1;
+        else if  (0 == strncmp("OUT ", buf, 4)) /* outgoing rule */
+            conf.in_rules_size += 1;
+        else
+            printf("Syntax error in rules file on line %d.\n", line_cnt);
+    }
+
+    /* allocate rule arrays */
+    conf.out_rules = Calloc(conf.out_rules_size, sizeof(struct out_rule));
+    conf.in_rules = Calloc(conf.in_rules_size, sizeof(struct in_rule));
+
+    rewind(rules);
+    line_cnt = 0;
+    irule_cnt = 0;
+    orule_cnt = 0;
+
+    /* load rules */
+    while (fgets(buf, CONF_MAXLEN, rules) != NULL) {
         ++line_cnt;
 
         if ('#' == buf[0] || '\n' == buf[0])  /* comment or empty line */
             continue;
         else if (0 == strncmp("IN ", buf, 3)) {     /* incoming rule */
+            size_t i;
 
+            beg = buf+3;
+            tok = beg;
+            len = strlen(tok);
+
+            for (i = 0, state = ADDR; i < len; ++i, ++tok) {
+
+                /* space is a separator */
+                if (state != SKEY && ' ' == *tok) {
+                    *tok = '\0';
+                    /* field should contain some data... */
+                    if (0 == strlen(beg)) {
+                        state = FAIL;
+                        break;
+                    }
+
+                    /* fetching sender address */
+                    if (ADDR == state) {
+                        conf.in_rules[irule_cnt].sender =
+                            Malloc(strlen(beg)+1);
+                        strcpy(conf.in_rules[irule_cnt].sender, beg);
+                        state = EKEY;   /* now look for encryption key */
+                        beg = tok+1;
+                        continue;
+                    }
+                    /* fetching encryption key */
+                    else if (EKEY == state) {
+                        conf.in_rules[irule_cnt].vsign_key_path =
+                            Malloc(strlen(beg)+1);
+                        strcpy(conf.in_rules[irule_cnt].vsign_key_path, beg);
+                        state = SKEY;   /* now look for sign key */
+                        beg = tok+1;
+                        continue;
+                    }
+                }
+                else if (SKEY == state && '\n' == *tok) {
+                    *tok = '\0';
+
+                    /* field should contain some data... */
+                    if (0 == strlen(beg)) {
+                        state = FAIL;
+                        break;
+                    }
+
+                    conf.in_rules[irule_cnt].decrypt_key_path =
+                        Malloc(strlen(beg)+1);
+                    strcpy(conf.in_rules[irule_cnt].decrypt_key_path, beg);
+
+                    /* all needed info fetched, we're done */
+                    conf.in_rules[irule_cnt].ok = 1;
+                    state = DONE;
+                    break;
+                }
+                /* reached end of line before fetching information */
+                else if ('\0' == *tok) {
+                    state = FAIL;
+                    break;
+                }
+            }
+
+            if (DONE == state)
+                ++irule_cnt;
+            else {
+                printf("Syntax error in rules file on line %d.\n", line_cnt);
+
+                if (NULL != conf.in_rules[irule_cnt].sender)
+                    free(conf.in_rules[irule_cnt].sender);
+                if (NULL != conf.in_rules[irule_cnt].vsign_key_path)
+                    free(conf.in_rules[irule_cnt].vsign_key_path);
+                if (NULL != conf.in_rules[irule_cnt].decrypt_key_path)
+                    free(conf.in_rules[irule_cnt].decrypt_key_path);
+                bzero(conf.in_rules+irule_cnt, sizeof(struct in_rule));
+            }
         }
-        else if  (0 == strncmp("OUT ", buf, 4)) {   /* outgoing rule */
-
+        else if (0 == strncmp("OUT ", buf, 4)) {   /* outgoing rule */
         }
         else
             printf("Syntax error in rules file on line %d.\n", line_cnt);

@@ -36,10 +36,10 @@ struct config {
     char *config_file;      /* configuration file location */
     char *rules_file;       /* encryption/signing rules file location */
 
-    struct rule* out_rules; /* outgoing encryption/signing rules */
-    size_t out_rules_size;  /* outgoing rules array size */
-    struct rule* in_rules;  /* incoming encryption/signing rules */
-    size_t in_rules_size;   /* incoming rules array size */
+    struct out_rule* out_rules; /* outgoing encryption/signing rules */
+    size_t out_rules_size;      /* outgoing rules array size */
+    struct in_rule* in_rules;   /* incoming encryption/signing rules */
+    size_t in_rules_size;       /* incoming rules array size */
 
     uint16_t smtp_port;     /* SMTP port */
 };
@@ -54,6 +54,7 @@ struct out_rule {
 
 /* struct out_rule - outgoing encryption/signing rule */
 struct in_rule {
+    int ok;                 /* is rule correct? */
     char *sender;           /* mail object sender */
     char *vsign_key_path;   /* location of key used to verify sign */
     char *decrypt_key_path; /* location of key for decryption */
