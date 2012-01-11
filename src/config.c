@@ -230,7 +230,6 @@ void parse_args (int argc, char **argv)
 #define ACTN    3       /* searching for action */
 #define EKEY    4       /* searching for encryption key */
 #define SKEY    5       /* searching for sign key */
-#define KEY     6       /* searching for sign or encrypt key */
 
 /* load_config - load configuration from config and rules file */
 void load_config (void)
@@ -291,9 +290,9 @@ void load_config (void)
         if ('#' == buf[0] || '\n' == buf[0])  /* comment or empty line */
             continue;
         else if (0 == strncmp("IN ", buf, 3))   /* incoming rule */
-            conf.out_rules_size += 1;
-        else if  (0 == strncmp("OUT ", buf, 4)) /* outgoing rule */
             conf.in_rules_size += 1;
+        else if  (0 == strncmp("OUT ", buf, 4)) /* outgoing rule */
+            conf.out_rules_size += 1;
         else
             printf("Syntax error in rules file on line %d.\n", line_cnt);
     }
@@ -340,16 +339,17 @@ void load_config (void)
                         beg = tok+1;
                         continue;
                     }
-                    /* fetching encryption key */
+                    /* fetching decryption key */
                     else if (EKEY == state) {
-                        conf.in_rules[irule_cnt].vsign_key_path =
+                        conf.in_rules[irule_cnt].decrypt_key_path =
                             Malloc(strlen(beg)+1);
-                        strcpy(conf.in_rules[irule_cnt].vsign_key_path, beg);
+                        strcpy(conf.in_rules[irule_cnt].decrypt_key_path, beg);
                         state = SKEY;   /* now look for sign key */
                         beg = tok+1;
                         continue;
                     }
                 }
+                /* fetching key for verifying signs */
                 else if (SKEY == state && '\n' == *tok) {
                     *tok = '\0';
 
@@ -359,9 +359,9 @@ void load_config (void)
                         break;
                     }
 
-                    conf.in_rules[irule_cnt].decrypt_key_path =
+                    conf.in_rules[irule_cnt].vsign_key_path =
                         Malloc(strlen(beg)+1);
-                    strcpy(conf.in_rules[irule_cnt].decrypt_key_path, beg);
+                    strcpy(conf.in_rules[irule_cnt].vsign_key_path, beg);
 
                     /* all needed info fetched, we're done */
                     conf.in_rules[irule_cnt].ok = 1;
@@ -390,11 +390,175 @@ void load_config (void)
             }
         }
         else if (0 == strncmp("OUT ", buf, 4)) {   /* outgoing rule */
+            size_t i;
+
+            beg = buf+4;
+            tok = beg;
+            len = strlen(tok);
+
+            for (i = 0, state = ADDR; i < len; ++i, ++tok) {
+
+                /* space is a separator */
+                if (state != SKEY && ' ' == *tok) {
+                    *tok = '\0';
+                    /* field should contain some data... */
+                    if (0 == strlen(beg)) {
+                        state = FAIL;
+                        break;
+                    }
+
+                    /* fetching sender address */
+                    if (ADDR == state) {
+                        conf.out_rules[orule_cnt].sender =
+                            Malloc(strlen(beg)+1);
+                        strcpy(conf.out_rules[orule_cnt].sender, beg);
+                        state = DOM;    /* now look for remote domain */
+                        beg = tok+1;
+                        continue;
+                    }
+                    /* fetching remote domain name */
+                    else if (DOM == state) {
+                        conf.out_rules[orule_cnt].out_domain =
+                            Malloc(strlen(beg)+1);
+                        strcpy(conf.out_rules[orule_cnt].out_domain, beg);
+                        state = ACTN;   /* now look for action type */
+                        beg = tok+1;
+                        continue;
+                    }
+                    /* fetching action type */
+                    else if (ACTN == state) {
+                        if (0 == strncmp("ENCRYPT", beg, strlen(beg)))
+                            conf.out_rules[orule_cnt].action = ACTION_ENCRYPT;
+                        else if (0 == strncmp("SIGN", beg, strlen(beg)))
+                            conf.out_rules[orule_cnt].action = ACTION_SIGN;
+                        else if (0 == strncmp("BOTH", beg, strlen(beg)))
+                            conf.out_rules[orule_cnt].action = ACTION_BOTH;
+                        else {
+                            state = FAIL;
+                            break;
+                        }
+
+                        state = EKEY;    /* now look for encryption key */
+                        beg = tok+1;
+                        continue;
+                    }
+                    /* fetching encryption key */
+                    else if (EKEY == state) {
+                        if (ACTION_SIGN != conf.out_rules[orule_cnt].action) {
+                            conf.out_rules[orule_cnt].encrypt_key_path =
+                                Malloc(strlen(beg)+1);
+                            strcpy(
+                              conf.out_rules[orule_cnt].encrypt_key_path, beg);
+                        }
+
+                        state = SKEY;   /* now look for sign key */
+                        beg = tok+1;
+                        continue;
+                    }
+                }
+                else if (SKEY == state && '\n' == *tok) {
+                    *tok = '\0';
+
+                    /* field should contain some data... */
+                    if (0 == strlen(beg)) {
+                        state = FAIL;
+                        break;
+                    }
+
+                    if (ACTION_ENCRYPT != conf.out_rules[orule_cnt].action) {
+                        conf.out_rules[orule_cnt].sign_key_path =
+                            Malloc(strlen(beg)+1);
+                        strcpy(conf.out_rules[orule_cnt].sign_key_path, beg);
+                    }
+
+                    /* all needed info fetched, we're done */
+                    state = DONE;
+                    break;
+                }
+                /* reached end of line before fetching information */
+                else if ('\0' == *tok) {
+                    state = FAIL;
+                    break;
+                }
+            }
+
+            if (DONE == state)
+                ++orule_cnt;
+            else {
+                printf("Syntax error in rules file on line %d.\n", line_cnt);
+
+                if (NULL != conf.out_rules[orule_cnt].sender)
+                    free(conf.out_rules[orule_cnt].sender);
+                if (NULL != conf.out_rules[orule_cnt].out_domain)
+                    free(conf.out_rules[orule_cnt].out_domain);
+                if (NULL != conf.out_rules[orule_cnt].encrypt_key_path)
+                    free(conf.out_rules[orule_cnt].encrypt_key_path);
+                if (NULL != conf.out_rules[orule_cnt].sign_key_path)
+                    free(conf.out_rules[orule_cnt].sign_key_path);
+                bzero(conf.out_rules+orule_cnt, sizeof(struct out_rule));
+            }
+
         }
         else
             printf("Syntax error in rules file on line %d.\n", line_cnt);
     }
 
     fclose(rules);
+}
+
+/* print_config - print current global configuration */
+void print_config (void)
+{
+    size_t i;
+
+    printf("Global configuration\n\n");
+
+    printf("Program name: %s\n"
+           "Version:      %s\n\n", conf.prog_name, conf.version);
+
+    if (0 == conf.daemon)
+        printf("Daemon mode:  no\n");
+    else
+        printf("Daemon mode:  yes\n");
+
+    printf("SMTP Port:    %d\n\n", conf.smtp_port);
+
+    printf("Config file:  %s\n", conf.config_file);
+    printf("Rules file:   %s\n\n", conf.rules_file);
+
+    printf("Loaded rules:\n");
+
+    /* print rules for outgoing traffic */
+    for (i = 0; i < conf.out_rules_size; ++i) {
+        if (ACTION_SIGN == conf.out_rules[i].action)
+            printf("  Sign mails from %s to %s domain with key %s\n",
+                    conf.out_rules[i].sender, conf.out_rules[i].out_domain,
+                    conf.out_rules[i].sign_key_path);
+        else if (ACTION_ENCRYPT == conf.out_rules[i].action)
+            printf("  Encrypt mails from %s to %s domain with key %s\n",
+                    conf.out_rules[i].sender, conf.out_rules[i].out_domain,
+                    conf.out_rules[i].encrypt_key_path);
+        else if (ACTION_BOTH == conf.out_rules[i].action) {
+            printf("/ Encrypt mails from %s to %s domain with key %s\n",
+                    conf.out_rules[i].sender, conf.out_rules[i].out_domain,
+                    conf.out_rules[i].encrypt_key_path);
+            printf("\\ Sign mails from %s to %s domain with key %s\n",
+                    conf.out_rules[i].sender, conf.out_rules[i].out_domain,
+                    conf.out_rules[i].sign_key_path);
+        }
+    }
+    printf("\n");
+
+    /* print rules for incoming traffic */
+    for (i = 0; i < conf.in_rules_size; ++i) {
+        if (conf.in_rules[i].ok) {
+            printf("/ Decrypt mails from %s with key %s\n",
+                    conf.in_rules[i].sender,
+                    conf.in_rules[i].decrypt_key_path);
+            printf("\\ Verify mail signs from %s with key %s\n",
+                    conf.in_rules[i].sender,
+                    conf.in_rules[i].vsign_key_path);
+        }
+    }
 }
 

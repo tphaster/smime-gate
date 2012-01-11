@@ -46,13 +46,14 @@ struct config {
 
 /* struct out_rule - outgoing encryption/signing rule */
 struct out_rule {
-    char *sender;       /* mail object sender */
-    char *out_domain;   /* destination domain */
-    int action;         /* sign, encrypt or both? */
-    char *key_path;     /* cryptographic key location */
+    char *sender;           /* mail object sender */
+    char *out_domain;       /* destination domain */
+    int action;             /* sign, encrypt or both? */
+    char *sign_key_path;    /* signing key location */
+    char *encrypt_key_path; /* encryption key location */
 };
 
-/* struct out_rule - outgoing encryption/signing rule */
+/* struct in_rule - incoming encryption/signing rule */
 struct in_rule {
     int ok;                 /* is rule correct? */
     char *sender;           /* mail object sender */
@@ -68,4 +69,5 @@ extern struct config conf;  /* global configuration */
 /*** Function prototypes ***/
 void parse_args (int argc, char **argv);
 void load_config (void);
+void print_config (void);
 
