@@ -4,22 +4,27 @@
  * Author:      Tomasz Pieczerak (tphaster)
  */
 
+#ifndef __SMTP_LIB_H
+#define __SMTP_LIB_H
+
+#include <stdint.h>
 #include <sys/types.h>
 
 /*** SMTP Commands ***/
-#define EHLO    1
-#define HELO    2
-#define MAIL    3
-#define RCPT    4
-#define DATA    5
-#define RSET    6
-#define VRFY    7
-#define NOOP    8
-#define QUIT    9
+#define EHLO    1       /* Extended HELLO */
+#define HELO    2       /* HELLO */
+#define MAIL    3       /* MAIL */
+#define RCPT    4       /* RECIPIENT */
+#define DATA    5       /* DATA */
+#define RSET    6       /* RESET */
+#define VRFY    7       /* VERIFY */
+#define NOOP    8       /* NOOP */
+#define QUIT    9       /* QUIT */
 
-#define RCPT_N(x)   (4+((x)<<4))
-#define GET_CMD(x)  ((x) & 0xF)
-#define GET_RNO(x)  (((x) & ~0xF)>>4)
+/** Retrieving recipient number from RCPT command **/
+#define RCPT_N(x)   (4+((x)<<4))        /* make RCPT command for 'x' rcpt */
+#define GET_CMD(x)  ((x) & 0xF)         /* cut rcpt number, pure command */
+#define GET_RNO(x)  (((x) & ~0xF)>>4)   /* get rcpt number from command */
 
 /*** SMTP Replies ***/
 #define R220     1  /* (on connection start) greeting */
@@ -59,69 +64,50 @@
 #define SIZE         9
 
 /*** SMTP Server States ***/
-#define SMTP_CLEAR  0
-#define SMTP_EHLO   1
-#define SMTP_MAIL   2
-#define SMTP_RCPT   3
-#define SMTP_DATA   4
-#define SMTP_QUIT   -1
+#define SMTP_CLEAR  0       /* clear */
+#define SMTP_EHLO   1       /* after EHLO/HELO receipt */
+#define SMTP_MAIL   2       /* after MAIL receipt */
+#define SMTP_RCPT   3       /* after (at last one) RCPT receipt */
+#define SMTP_DATA   4       /* receiving mail data */
 
 
 /*** Constants ***/
-#define DOMAIN_MAXLEN       128
-#define LINE_MAXLEN         256
-#define ADDR_MAXLEN         128
+#define LINE_MAXLEN         256     /* maximum SMTP line length  */
+#define DOMAIN_MAXLEN       128     /* maximum domain name length */
+#define ADDR_MAXLEN         128     /* maximum mail address length */
+#define CMD_MAXLEN          128     /* maximum command data length */
 
-#define START       0
-#define CR_READ     1
+/** Errors -- function fails to complete action **/
+#define NULLPTR     -1      /* NULL pointer dereference */
+#define RCVERROR    -2      /* receipt error */
+#define BADARG      -3      /* bad function arguments */
+#define SENDERROR   -4      /* sending error */
 
-/* Errors */
-#define NULLPTR     -1
-#define RCVERROR    -2
-#define BADARG      -3
+/** Warnings -- function ended well, but receipt was invalid for SMTP **/
+#define RCV_BADPARAM    1   /* received command with bad parameter */
+#define RCV_NKNOWNCMD   2   /* received unknown command */
+#define RCV_NKNOWNRPLY  3   /* received unknown reply */
 
-/* Warnings */
-#define RCV_BADPARAM    1
-#define RCV_NKNOWNCMD   2
-#define RCV_NKNOWNRPLY  3
-
-
-/*** Macros ***/
-#define min(a,b)    ((a) < (b) ? (a) : (b))
-#define max(a,b)    ((a) > (b) ? (a) : (b))
-
-/* Define bzero() as a macro, if it's not in standard C library. */
-#ifndef HAVE_BZERO
-#define bzero(ptr,n)    memset(ptr, 0, n)
-#endif
 
 /*** Typedefs ***/
+#include "smtp-types.h"
 
-/* Mail object */
-struct mail_object {
-    char *mail_from;
-    char **rcpt_to;
-    size_t no_rcpt;
-    char *data;
-    size_t data_size;
-};
-
-/* SMTP Command */
+/** SMTP Command **/
 struct smtp_command {
-    size_t code;
-    char data [max(DOMAIN_MAXLEN, ADDR_MAXLEN)];
+    uint16_t code;          /* command code (see SMTP Commands) */
+    char data[CMD_MAXLEN];  /* additional data */
 };
 
-/* SMTP Reply */
+/** SMTP Reply **/
 struct smtp_reply {
-    size_t code;
-    char msg[LINE_MAXLEN-4];
+    uint16_t code;              /* reply code (see SMTP Replies) */
+    char msg[LINE_MAXLEN-4];    /* message sent in reply */
 };
 
-/* ESMTP Extensions */
+/** ESMTP Extensions **/
 struct esmtp_ext {
-    size_t ext[NO_EXT];
-    size_t no_ext;
+    uint8_t ext[NO_EXT];    /* table for extensions, ex. esmtp_ext.ext[EXPN]
+                             * (see ESMTP Extensions)*/
 };
 
 /*** Functions ***/
@@ -130,4 +116,6 @@ int smtp_send_reply (int sockfd, size_t code, const char *msg, size_t msg_len);
 ssize_t smtp_readline (int fd, void *vptr, size_t maxlen);
 int smtp_recv_command (int sockfd, struct smtp_command *cmd);
 int smtp_recv_reply (int sockfd, struct smtp_reply *rply);
+
+#endif  /* __SMTP_LIB_H */
 

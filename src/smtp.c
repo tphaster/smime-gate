@@ -9,303 +9,370 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
+#include "smtp-lib.h"
 #include "smtp.h"
 #include "system.h"
 
-#define DSTART       0
-#define DDOT_READ    1
-#define DCR_READ     2
+#define MAIL_START_LEN  512     /* default mail block size */
 
-#define MAIL_START_LEN  512
+static ssize_t smtp_recv_mail_data (int sockfd, char **buf_ptr,
+                                    size_t *buf_size);
 
-ssize_t smtp_recv_mail_data (int sockfd, char **buf_ptr, size_t *buf_size);
-
-
+/* smtp_send_mail - send a mail object through connected socket */
 int smtp_send_mail (int sockfd, struct mail_object *mail)
 {
-    size_t i;
+    int ret;
+    unsigned int i;
     struct esmtp_ext ext;
-    struct smtp_reply *rply = Malloc(sizeof(struct smtp_reply));
+    struct smtp_reply rply;
 
-    smtp_recv_reply(sockfd, rply);
-    if (R220 != rply->code) {
-        free(rply);
-        return RCVERROR;
+    if (NULL == mail)
+        return NULLPTR;
+
+    /* Receive first welcome reply */
+    if (0 != smtp_recv_reply(sockfd, &rply) || R220 != rply.code) {
+        close(sockfd);
+        return ERECVERR;
     }
 
     /* EHLO */
-    smtp_send_command(sockfd, EHLO, NULL);
+    if (0 != smtp_send_command(sockfd, EHLO, NULL)) {
+        close(sockfd);
+        return ESENDERR;
+    }
 
+    /* Receive ESMTP Extensions */
     bzero(&ext, sizeof(ext));
 
-    /* ESMTP Extensions */
     for (;;) {
-        smtp_recv_reply(sockfd, rply);
+        if (0 != smtp_recv_reply(sockfd, &rply)) {
+            close(sockfd);
+            return ERECVERR;
+        }
 
-        if (R250E == rply->code) {
-            if (0 == strncmp("8BITMIME", rply->msg, 9))
+        if (R250E == rply.code) {
+            if (0 == strncmp("8BITMIME", rply.msg, 9))
                 ext.ext[_8BITMIME] = 1;
-            else if (0 == strncmp("DSN", rply->msg, 4))
+            else if (0 == strncmp("DSN", rply.msg, 4))
                 ext.ext[DSN] = 1;
-            else if (0 == strncmp("ETRN", rply->msg, 5))
+            else if (0 == strncmp("ETRN", rply.msg, 5))
                 ext.ext[ETRN] = 1;
-            else if (0 == strncmp("EXPN", rply->msg, 6))
+            else if (0 == strncmp("EXPN", rply.msg, 6))
                 ext.ext[EXPN] = 1;
-            else if (0 == strncmp("HELP", rply->msg, 7))
+            else if (0 == strncmp("HELP", rply.msg, 7))
                 ext.ext[HELP] = 1;
-            else if (0 == strncmp("ONEX", rply->msg, 8))
+            else if (0 == strncmp("ONEX", rply.msg, 8))
                 ext.ext[ONEX] = 1;
-            else if (0 == strncmp("PIPELINING", rply->msg, 11))
+            else if (0 == strncmp("PIPELINING", rply.msg, 11))
                 ext.ext[PIPELINING] = 1;
-            else if (0 == strncmp("SIZE", rply->msg, 5))
+            else if (0 == strncmp("SIZE", rply.msg, 5))
                 ext.ext[SIZE] = 1;
-            else if (0 == strncmp("VERB", rply->msg, 5))
+            else if (0 == strncmp("VERB", rply.msg, 5))
                 ext.ext[VERB] = 1;
-            else if (0 == strncmp("VRFY", rply->msg, 5))
+            else if (0 == strncmp("VRFY", rply.msg, 5))
                 ext.ext[VRFY] = 1;
             else {
                 /* unknown extension, ignore */;
             }
         }
-        else if (R250 == rply->code)
+        else if (R250 == rply.code)
             break;
         else {
-            free(rply);
-            return RCVERROR;   /* something goes wrong... */
+            close(sockfd);
+            return ERECVERR;  /* something went wrong... */
         }
     }
 
     /* MAIL */
-    smtp_send_command(sockfd, MAIL, mail);
-    smtp_recv_reply(sockfd, rply);
-    if (R250 != rply->code) {
-        free(rply);
-        return RCVERROR;
+    if (0 != smtp_send_command(sockfd, MAIL, mail)) {
+        close(sockfd);
+        return ESENDERR;
+    }
+    if (0 != smtp_recv_reply(sockfd, &rply) || R250 != rply.code) {
+        close(sockfd);
+        return ERECVERR;
     }
 
     /* RCPT */
     for (i = 0; i < mail->no_rcpt; ++i) {
-        smtp_send_command(sockfd, RCPT_N(i), mail);
-        smtp_recv_reply(sockfd, rply);
-        if (R250 != rply->code) {
-            free(rply);
-            return RCVERROR;
+        if (0 != smtp_send_command(sockfd, RCPT_N(i), mail)) {
+            close(sockfd);
+            return ESENDERR;
+        }
+        if (0 != smtp_recv_reply(sockfd, &rply) || R250 != rply.code) {
+            close(sockfd);
+            return ERECVERR;
         }
     }
 
     /* DATA */
-    smtp_send_command(sockfd, DATA, NULL);
-    smtp_recv_reply(sockfd, rply);
-    if (R354 != rply->code) {
-        free(rply);
-        return RCVERROR;
+    if (0 != smtp_send_command(sockfd, DATA, NULL)) {
+        close(sockfd);
+        return ESENDERR;
+    }
+    if (0 != smtp_recv_reply(sockfd, &rply) || R354 != rply.code) {
+        close(sockfd);
+        return ERECVERR;
     }
 
     /* Sending data */
-    Writen(sockfd, mail->data, mail->data_size);
-    Writen(sockfd, ".\r\n", 3);     /* end of message */
-    smtp_recv_reply(sockfd, rply);
-    if (R250 != rply->code) {
-        free(rply);
-        return RCVERROR;
+    if ((ssize_t)mail->data_size != writen(sockfd, mail->data, mail->data_size)
+        && 3 != writen(sockfd, ".\r\n", 3))
+    {
+        close(sockfd);
+        return ESENDERR;
     }
+    if (0 != smtp_recv_reply(sockfd, &rply) || R250 != rply.code) {
+        close(sockfd);
+        return ERECVERR;
+    }
+    ret = 0;    /* mail object successfully sent */
 
     /* QUIT */
-    smtp_send_command(sockfd, QUIT, NULL);
-    smtp_recv_reply(sockfd, rply);
-    if (R221 != rply->code) {
-        free(rply);
-        return RCVERROR;
-    }
+    if (0 != smtp_send_command(sockfd, QUIT, NULL))
+        ret = WQUITNSEND;
+    if (0 != smtp_recv_reply(sockfd, &rply) || R221 != rply.code)
+        ret = WQUITRNRCV;
 
-    free(rply);
-    return 0;
+    close(sockfd);
+    return ret;
 }
 
-int smtp_recv_mail (int sockfd, struct mail_object *mail, char *filename)
+/* smtp_recv_mail - receive mail object from connected socket *
+ *                  (SMTP server)                             */
+int smtp_recv_mail (int sockfd, struct mail_object *mail, char *filename,
+                    int srv)
 {
-    size_t i;
-    ssize_t data_size;
-    int state = SMTP_CLEAR;
-    int mail_rcvd = 0;
+    int ret;
+    unsigned int i;
     char **temp_rcpt;
-    struct smtp_command *cmd = malloc(sizeof(struct smtp_command));
+    struct smtp_command cmd;
+    ssize_t data_size;          /* size of data received */
+    int state = SMTP_CLEAR;     /* SMTP server states */
 
-    smtp_send_reply(sockfd, R220, NULL, 0);
+    /* sent welcome reply, if it is a new session */
+    if (SMTP_SRV_NEW == srv) {
+        if (0 != smtp_send_reply(sockfd, R220, NULL, 0)) {
+            close(sockfd);
+            return ESENDERR;
+        }
+    }
+    else
+        state = SMTP_EHLO;
 
-    while (state >= 0) {
+    for (;;) {
+        /* receiving mail object data */
         if (SMTP_DATA == state) {
             data_size = smtp_recv_mail_data(sockfd, &(mail->data), NULL);
             if (data_size <= 0) {
                 close(sockfd);
-                free(cmd);
-                return RCVERROR;
+                return ERECVERR;
             }
-
             mail->data_size = data_size;
-            if (0 == save_mail_to_disk(mail, filename)) {
-                smtp_send_reply(sockfd, R250, NULL, 0);
-                mail_rcvd = 1;
+
+            /* save mail to disk */
+            if (0 == save_mail_to_file(mail, filename)) {
+                smtp_send_reply(sockfd, R250, NULL, 0);     /* mail accepted */
+                return 0;
             }
-            else
-                smtp_send_reply(sockfd, R552, NULL, 0);
-
-            state = SMTP_EHLO;
-            continue;
+            else {
+                free(mail->data);
+                mail->data_size = 0;
+                /* insufficient system storage */
+                smtp_send_reply(sockfd, R452, NULL, 0);
+                state = SMTP_RCPT;
+            }
         }
-        else
-            smtp_recv_command(sockfd, cmd);
 
-        switch(state) {
-            case SMTP_CLEAR:
-                if (EHLO == cmd->code || HELO == cmd->code) {
-                    state = SMTP_EHLO;
-                    smtp_send_reply(sockfd, R250, NULL, 0);
+        /* receiving command */
+        if (0 != smtp_recv_command(sockfd, &cmd)) {
+            close(sockfd);
+            return ERECVERR;
+        }
+
+        switch (state) {
+            case SMTP_CLEAR:    /* new SMTP session */
+                if (EHLO == cmd.code || HELO == cmd.code)
+                {
+                    state = SMTP_EHLO;  /* EHLO/HELO received */
+                    ret = smtp_send_reply(sockfd, R250, NULL, 0);   /* OK */
                 }
-                else if (MAIL == cmd->code || RCPT == cmd->code ||
-                         DATA == cmd->code) {
-                    smtp_send_reply(sockfd, R503, NULL, 0);
+                else if (MAIL == cmd.code || RCPT == cmd.code ||
+                         DATA == cmd.code) {
+                    /* bad sequence of commands*/
+                    ret = smtp_send_reply(sockfd, R503, NULL, 0);
                 }
-                else if (QUIT == cmd->code) {
+                else if (QUIT == cmd.code) {
                     smtp_send_reply(sockfd, R221, NULL, 0);
-                    state = SMTP_QUIT;
+                    close(sockfd);
+
+                    return EQUITRECV;   /* mail not received, client quits */
                 }
-                else if (RSET == cmd->code || NOOP == cmd->code)
-                    smtp_send_reply(sockfd, R250, NULL, 0);
-                else if (VRFY == cmd->code)
-                    smtp_send_reply(sockfd, R252, NULL, 0);
+                else if (RSET == cmd.code || NOOP == cmd.code)
+                    ret = smtp_send_reply(sockfd, R250, NULL, 0);   /* OK */
+                else if (VRFY == cmd.code)
+                    /* cannot verify user*/
+                    ret = smtp_send_reply(sockfd, R252, NULL, 0);
                 else
-                    smtp_send_reply(sockfd, R500, NULL, 0);
+                    /* syntax error, command unrecognized */
+                    ret = smtp_send_reply(sockfd, R500, NULL, 0);
 
-                break;
+                break;  /* end of SMTP_CLEAR */
 
-            case SMTP_EHLO:
-                if (EHLO == cmd->code || HELO == cmd->code ||
-                        RCPT == cmd->code || DATA == cmd->code ) {
-                    smtp_send_reply(sockfd, R503, NULL, 0);
+            case SMTP_EHLO:     /* EHLO/HELO received */
+                if (EHLO == cmd.code || HELO == cmd.code ||
+                    RCPT == cmd.code || DATA == cmd.code)
+                {
+                    /* bad sequence of commands*/
+                    ret = smtp_send_reply(sockfd, R503, NULL, 0);
                 }
-                else if (MAIL == cmd->code) {
-                    if (0 == mail_rcvd) {
-                        state = SMTP_MAIL;
-                        mail->mail_from = malloc(strlen(cmd->data)+1);
-                        strcpy(mail->mail_from, cmd->data);
-                        smtp_send_reply(sockfd, R250, NULL, 0);
+                else if (MAIL == cmd.code) {
+                    if (NULL == (mail->mail_from = malloc(strlen(cmd.data)+1)))
+                        /* insufficient system storage */
+                        ret = smtp_send_reply(sockfd, R452, NULL, 0);
+                    else {
+                        state = SMTP_MAIL;  /* MAIL recevied */
+                        strcpy(mail->mail_from, cmd.data);
+                        ret = smtp_send_reply(sockfd, R250, NULL, 0);  /* OK */
                     }
-                    else
-                        smtp_send_reply(sockfd, R552, NULL, 0);
                 }
-                else if (QUIT == cmd->code) {
+                else if (QUIT == cmd.code) {
                     smtp_send_reply(sockfd, R221, NULL, 0);
-                    state = SMTP_QUIT;
-                }
-                else if (RSET == cmd->code || NOOP == cmd->code)
-                    smtp_send_reply(sockfd, R250, NULL, 0);
-                else if (VRFY == cmd->code)
-                    smtp_send_reply(sockfd, R252, NULL, 0);
-                else
-                    smtp_send_reply(sockfd, R500, NULL, 0);
-                break;
+                    close(sockfd);
 
-            case SMTP_MAIL:
-                if (EHLO == cmd->code || HELO == cmd->code ||
-                    MAIL == cmd->code || DATA == cmd->code ) {
-                    smtp_send_reply(sockfd, R503, NULL, 0);
+                    return EQUITRECV;   /* mail not received, client quits */
                 }
-                else if (RCPT == cmd->code) {
-                    state = SMTP_RCPT;
-                    mail->rcpt_to = malloc(sizeof(char *));
-                    mail->rcpt_to[0] = malloc(strlen(cmd->data)+1);
-                    strcpy(mail->rcpt_to[0], cmd->data);
-                    mail->no_rcpt = 1;
-                    smtp_send_reply(sockfd, R250, NULL, 0);
+                else if (RSET == cmd.code || NOOP == cmd.code)
+                    ret = smtp_send_reply(sockfd, R250, NULL, 0);   /* OK */
+                else if (VRFY == cmd.code)
+                    /* cannot verify user*/
+                    ret = smtp_send_reply(sockfd, R252, NULL, 0);
+                else
+                    /* syntax error, command unrecognized */
+                    ret = smtp_send_reply(sockfd, R500, NULL, 0);
+
+                break;  /* end of SMTP_EHLO */
+
+            case SMTP_MAIL:     /* MAIL received*/
+                if (EHLO == cmd.code || HELO == cmd.code ||
+                    MAIL == cmd.code || DATA == cmd.code)
+                {
+                    /* bad sequence of commands*/
+                    ret = smtp_send_reply(sockfd, R503, NULL, 0);
                 }
-                else if (QUIT == cmd->code) {
+                else if (RCPT == cmd.code) {
+                    if (NULL == (mail->rcpt_to = malloc(sizeof(char *)))) {
+                        /* insufficient system storage */
+                        ret = smtp_send_reply(sockfd, R452, NULL, 0);
+                    }
+                    else if (NULL ==
+                             (mail->rcpt_to[0] = malloc(strlen(cmd.data)+1)))
+                    {
+                        free(mail->rcpt_to);
+                        mail->rcpt_to = NULL;
+                        /* insufficient system storage */
+                        ret = smtp_send_reply(sockfd, R452, NULL, 0);
+                    }
+                    else {
+                        state = SMTP_RCPT;  /* RCPT received */
+                        strcpy(mail->rcpt_to[0], cmd.data);
+                        mail->no_rcpt = 1;
+                        ret = smtp_send_reply(sockfd, R250, NULL, 0);  /* OK */
+                    }
+                }
+                else if (QUIT == cmd.code) {
                     smtp_send_reply(sockfd, R221, NULL, 0);
-                    free(mail->mail_from);
-                    mail->mail_from = NULL;
-                    state = SMTP_QUIT;
-                }
-                else if (RSET == cmd->code) {
-                    free(mail->mail_from);
-                    mail->mail_from = NULL;
-                    smtp_send_reply(sockfd, R250, NULL, 0);
-                }
-                else if (NOOP == cmd->code)
-                    smtp_send_reply(sockfd, R250, NULL, 0);
-                else if (VRFY == cmd->code)
-                    smtp_send_reply(sockfd, R252, NULL, 0);
-                else
-                    smtp_send_reply(sockfd, R500, NULL, 0);
-                break;
+                    close(sockfd);
+                    free_mail_object(mail);
 
-            case SMTP_RCPT:
-                if (EHLO == cmd->code || HELO == cmd->code ||
-                    MAIL == cmd->code) {
-                    smtp_send_reply(sockfd, R503, NULL, 0);
+                    return EQUITRECV;   /* mail not received, client quits */
                 }
-                else if (RCPT == cmd->code) {
+                else if (RSET == cmd.code) {
+                    free_mail_object(mail);
+                    ret = smtp_send_reply(sockfd, R250, NULL, 0); /* OK */
+                }
+                else if (NOOP == cmd.code)
+                    ret = smtp_send_reply(sockfd, R250, NULL, 0);   /* OK */
+                else if (VRFY == cmd.code)
+                    /* cannot verify user*/
+                    ret = smtp_send_reply(sockfd, R252, NULL, 0);
+                else
+                    /* syntax error, command unrecognized */
+                    ret = smtp_send_reply(sockfd, R500, NULL, 0);
+
+                break;  /* end of SMTP_MAIL */
+
+            case SMTP_RCPT:     /* RCPT received */
+                if (EHLO == cmd.code || HELO == cmd.code || MAIL == cmd.code) {
+                    /* bad sequence of commands*/
+                    ret = smtp_send_reply(sockfd, R503, NULL, 0);
+                }
+                else if (RCPT == cmd.code) {
+                    /* next recipient */
                     temp_rcpt = mail->rcpt_to;
                     mail->rcpt_to = malloc((mail->no_rcpt+1) * sizeof(char *));
-                    for (i = 0; i < mail->no_rcpt; ++i)
-                        mail->rcpt_to[i] = temp_rcpt[i];
-                    free(temp_rcpt);
-                    temp_rcpt = NULL;
+                    if (NULL == mail->rcpt_to) {
+                        mail->rcpt_to = temp_rcpt;
+                        /* insufficient system storage */
+                        ret = smtp_send_reply(sockfd, R452, NULL, 0);
+                    }
+                    else {
+                        for (i = 0; i < mail->no_rcpt; ++i)
+                            mail->rcpt_to[i] = temp_rcpt[i];
+                        free(temp_rcpt);
+                        temp_rcpt = NULL;
 
-                    mail->rcpt_to[mail->no_rcpt] = malloc(strlen(cmd->data)+1);
-                    strcpy(mail->rcpt_to[mail->no_rcpt], cmd->data);
-                    mail->no_rcpt += 1;
-                    smtp_send_reply(sockfd, R250, NULL, 0);
+                        mail->rcpt_to[mail->no_rcpt] =
+                                malloc(strlen(cmd.data)+1);
+                        if (NULL == mail->rcpt_to[mail->no_rcpt]) {
+                            /* insufficient system storage */
+                            ret = smtp_send_reply(sockfd, R452, NULL, 0);
+                        }
+                        else {
+                            strcpy(mail->rcpt_to[mail->no_rcpt], cmd.data);
+                            mail->no_rcpt += 1;
+                            /* OK */
+                            ret = smtp_send_reply(sockfd, R250, NULL, 0);
+                        }
+                    }
                 }
-                else if (DATA == cmd->code) {
-                    state = SMTP_DATA;
-                    smtp_send_reply(sockfd, R354, NULL, 0);
+                else if (DATA == cmd.code) {
+                    state = SMTP_DATA;  /* DATA received */
+                    /* start mail input */
+                    ret = smtp_send_reply(sockfd, R354, NULL, 0);
                 }
-                else if (QUIT == cmd->code) {
+                else if (QUIT == cmd.code) {
                     smtp_send_reply(sockfd, R221, NULL, 0);
+                    close(sockfd);
+                    free_mail_object(mail);
 
-                    free(mail->mail_from);
-                    mail->mail_from = NULL;
-
-                    for (i = 0; i < mail->no_rcpt; ++i)
-                        free(mail->rcpt_to[i]);
-                    free(mail->rcpt_to);
-                    mail->rcpt_to = NULL;
-
-                    state = SMTP_QUIT;
+                    return EQUITRECV;   /* mail not received, client quits */
                 }
-                else if (RSET == cmd->code) {
-                    free(mail->mail_from);
-                    mail->mail_from = NULL;
-
-                    for (i = 0; i < mail->no_rcpt; ++i)
-                        free(mail->rcpt_to[i]);
-                    free(mail->rcpt_to);
-                    mail->rcpt_to = NULL;
-
-                    smtp_send_reply(sockfd, R250, NULL, 0);
+                else if (RSET == cmd.code) {
+                    free_mail_object(mail);
+                    ret = smtp_send_reply(sockfd, R250, NULL, 0);   /* OK */
                 }
-                else if (NOOP == cmd->code)
-                    smtp_send_reply(sockfd, R250, NULL, 0);
-                else if (VRFY == cmd->code)
-                    smtp_send_reply(sockfd, R252, NULL, 0);
+                else if (NOOP == cmd.code)
+                    ret = smtp_send_reply(sockfd, R250, NULL, 0);   /* OK */
+                else if (VRFY == cmd.code)
+                    /* cannot verify user*/
+                    ret = smtp_send_reply(sockfd, R252, NULL, 0);
                 else
-                    smtp_send_reply(sockfd, R500, NULL, 0);
+                    /* syntax error, command unrecognized */
+                    ret = smtp_send_reply(sockfd, R500, NULL, 0);
 
-                break;
+                break;  /* end of SMTP_RCPT */
 
             default:
                 /* this can't happen */;
         }
+
+        if (0 != ret) {
+            free_mail_object(mail);
+
+            return ESENDERR;
+        }
     }
-
-    close(sockfd);
-    free(cmd);
-
-    if (mail_rcvd)
-        return 0;
-    else
-        return RCVERROR;
 }
 
 /* WARNING! Function buf_read() is not safe for threads */
@@ -336,7 +403,17 @@ again:
     return 1;   /* one character read */
 }
 
-ssize_t smtp_recv_mail_data (int sockfd, char **buf_ptr, size_t *buf_size)
+/* smtp_recv_mail_data - accepts mail data from client, it will continue     *
+ *                       receiving until it gets .CRLF or system runs out of *
+ *                       memory.                                             */
+
+/* data receipt states */
+#define DSTART       0      /* clear */
+#define DDOT_READ    1      /* "." received */
+#define DCR_READ     2      /* CR received */
+
+static ssize_t smtp_recv_mail_data (int sockfd, char **buf_ptr,
+                                    size_t *buf_size)
 {
     int rc, state;
     size_t n, buflen;
@@ -362,7 +439,7 @@ ssize_t smtp_recv_mail_data (int sockfd, char **buf_ptr, size_t *buf_size)
             }
             else if (DDOT_READ == state) {
                 if (c == '\r') {
-                    state = CR_READ;    /* CR read; next turn check for LF */
+                    state = DCR_READ;   /* CR read; next turn check for LF */
                     continue;
                 }
                 else
@@ -402,20 +479,24 @@ ssize_t smtp_recv_mail_data (int sockfd, char **buf_ptr, size_t *buf_size)
     return n;
 }
 
-int save_mail_to_disk (struct mail_object *mail, const char *filename)
+/* save_mail_to_disc - saves given mail object to file */
+int save_mail_to_file (struct mail_object *mail, const char *filename)
 {
     FILE *fp;
     size_t i;
 
     if ((fp = fopen(filename, "w")) == NULL)
-        return -1;  /* can't open file */
+        return EFOPEN;  /* can't open file */
 
+    /* save sender address */
     fprintf(fp, "%s\n", mail->mail_from);
-    fprintf(fp, "%d\n", mail->no_rcpt);
 
+    /* save recipients addresses */
+    fprintf(fp, "%d\n", mail->no_rcpt);
     for (i = 0; i < mail->no_rcpt; ++i)
         fprintf(fp, "%s\n", mail->rcpt_to[i]);
 
+    /* save mail data */
     for (i = 0; i < mail->data_size; ++i)
         putc(mail->data[i], fp);
 
@@ -424,57 +505,59 @@ int save_mail_to_disk (struct mail_object *mail, const char *filename)
     return 0;
 }
 
-int load_mail_from_disk (const char *filename, struct mail_object *mail)
+/* load_mail_from_file - loads mail object from file */
+int load_mail_from_file (const char *filename, struct mail_object *mail)
 {
     FILE *fp;
-    char buf[LINE_MAXLEN];
+    char buf[ADDR_MAXLEN];
     size_t len, i;
     long pos;
 
     if ((fp = fopen(filename, "r")) == NULL)
-        return -1;  /* can't open file */
+        return EFOPEN;  /* can't open file */
 
     /* get MAIL FROM: */
     if (fgets(buf, LINE_MAXLEN, fp) == NULL) {
         fclose(fp);
-        bzero(mail, sizeof(struct mail_object));
-        return -1;  /* error or EOF */
+        return EUEXEOF; /* error or EOF */
     }
 
     len = strlen(buf)-1;
     buf[len] = '\0';
-    mail->mail_from = malloc(len);
+    if (NULL == (mail->mail_from = malloc(len))) {
+        fclose(fp);
+        return ENOMEM;
+    }
     strncpy(mail->mail_from, buf, len);
 
     /* get RCPT TO: */
     if (fgets(buf, LINE_MAXLEN, fp) == NULL) {
         fclose(fp);
-        free(mail->mail_from);
-        bzero(mail, sizeof(struct mail_object));
-        return -1;  /* error or EOF */
+        free_mail_object(mail);
+        return EUEXEOF; /* error or EOF */
     }
 
     mail->no_rcpt = atoi(buf);
-    mail->rcpt_to = malloc(mail->no_rcpt * sizeof(char *));
-    bzero(mail->rcpt_to, mail->no_rcpt * sizeof(char *));
+    if (NULL == (mail->rcpt_to = calloc(mail->no_rcpt, sizeof(char *)))) {
+        fclose(fp);
+        free_mail_object(mail);
+        return ENOMEM;
+    }
 
     for (i = 0; i < mail->no_rcpt; ++i) {
         if (fgets(buf, LINE_MAXLEN, fp) == NULL) {
-            size_t j;
             fclose(fp);
-            free(mail->mail_from);
-            for (j = 0; j < mail->no_rcpt; ++j) {
-                if (NULL != mail->rcpt_to[j])
-                    free(mail->rcpt_to[j]);
-            }
-            free(mail->rcpt_to);
-            bzero(mail, sizeof(struct mail_object));
-            return -1;  /* error or EOF */
+            free_mail_object(mail);
+            return EUEXEOF; /* error or EOF */
         }
 
         len = strlen(buf)-1;
         buf[len] = '\0';
-        mail->rcpt_to[i] = malloc(len);
+        if (NULL == (mail->rcpt_to[i] = malloc(len))) {
+            fclose(fp);
+            free_mail_object(mail);
+            return ENOMEM;
+        }
         strncpy(mail->rcpt_to[i], buf, len);
     }
 
@@ -484,7 +567,11 @@ int load_mail_from_disk (const char *filename, struct mail_object *mail)
     mail->data_size = ftell(fp)-pos;
     fseek(fp, pos, SEEK_SET);
 
-    mail->data = malloc(mail->data_size);
+    if (NULL == (mail->data = malloc(mail->data_size))) {
+        fclose(fp);
+        free_mail_object(mail);
+        return ENOMEM;
+    }
     fread(mail->data, sizeof(char), mail->data_size, fp);
 
     return 0;

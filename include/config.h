@@ -5,7 +5,11 @@
  * Author:      Tomasz Pieczerak (tphaster)
  */
 
+#ifndef __CONFIG_H
+#define __CONFIG_H
+
 #include <stdint.h>
+#include <netinet/in.h>
 
 
 /*** Constants ***/
@@ -25,6 +29,7 @@
 #define ACTION_ENCRYPT      2   /* encrypt mail object */
 #define ACTION_BOTH         3   /* encrypt and sign mail object */
 
+
 /*** Type Definitions ***/
 
 /* struct config - holds program configuration */
@@ -41,7 +46,7 @@ struct config {
     struct in_rule* in_rules;   /* incoming encryption/signing rules */
     size_t in_rules_size;       /* incoming rules array size */
 
-    uint16_t smtp_port;     /* SMTP port */
+    struct sockaddr_in mail_srv;    /* mail server address */
 };
 
 /* struct out_rule - outgoing encryption/signing rule */
@@ -70,4 +75,6 @@ extern struct config conf;  /* global configuration */
 void parse_args (int argc, char **argv);
 void load_config (void);
 void print_config (void);
+
+#endif  /* __CONFIG_H */
 

@@ -10,10 +10,12 @@
  */
 
 #include <libgen.h>
+#include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 #include "config.h"
 #include "system.h"
 
@@ -204,8 +206,8 @@ void parse_args (int argc, char **argv)
     /* check if set config file is readable */
     if (0 != access(conf.config_file, R_OK)) {
         printf("Can't read '%s' configuration file.\n", conf.config_file);
-        free(conf.config_file);
-        conf.config_file = NULL;
+        usage();
+        exit(1);
     }
 
     /* load default rules file, if none was set */
@@ -238,39 +240,60 @@ void load_config (void)
     char buf[CONF_MAXLEN], *tok, *beg;
     size_t len, line_cnt, irule_cnt, orule_cnt;
     int state;
+    int port;
 
     /* load program configuration */
-    if (NULL == conf.config_file ||
-        NULL == (config = fopen(conf.config_file, "r")))
-    {
-        /* load default config */
-        conf.smtp_port = DEFAULT_SMTP_PORT;
-        printf("Loaded default configuration.\n");
+    if (NULL == (config = fopen(conf.config_file, "r"))) {
+        printf("Can't read '%s' configuration file.\n", conf.config_file);
+        usage();
+        exit(1);
     }
-    else {
-        line_cnt = 0;
 
-        while (fgets(buf, CONF_MAXLEN, config) != NULL) {
-            ++line_cnt;
+    line_cnt = 0;
 
-            if ('#' == buf[0] || '\n' == buf[0])  /* comment or empty line */
-                continue;
-            else if (0 == strncmp("smtp_port = ", buf, 12))   /* SMTP Port */
-                conf.smtp_port = atoi(buf+12);
-            else if (0 == strncmp("rules = ", buf, 8)) { /* rules location */
-                if (NULL != conf.rules_file)
-                    free(conf.rules_file);
+    while (fgets(buf, CONF_MAXLEN, config) != NULL) {
+        ++line_cnt;
 
-                len = strlen(buf+8)+1;
-                conf.rules_file = Malloc(len);
-                strncpy(conf.rules_file, buf+8, len);
-                conf.rules_file[len-2] = '\0';
+        if ('#' == buf[0] || '\n' == buf[0])  /* comment or empty line */
+            continue;
+        else if (0 == strncmp("smtp_port = ", buf, 12)) { /* SMTP Port */
+            if ((port = atoi(buf+12)) > 0)
+                conf.mail_srv.sin_port = htons(port);
+            else
+                printf("Syntax error in config file on line %d"
+                       "-- bad SMTP port (smtp_port).\n", line_cnt);
+        }
+        else if (0 == strncmp("rules = ", buf, 8)) { /* rules location */
+            if (NULL != conf.rules_file)
+                free(conf.rules_file);
+
+            len = strlen(buf+8)+1;
+            conf.rules_file = Malloc(len);
+            strncpy(conf.rules_file, buf+8, len);
+            conf.rules_file[len-2] = '\0';
+        }
+        else if (0 == strncmp("mail_srv = ", buf, 11)) { /* mail server */
+            (buf+11)[strlen(buf+11)-1] = '\0';
+            if (1 != inet_pton(AF_INET, buf+11, &(conf.mail_srv.sin_addr))) {
+                printf("Syntax error in config file on line %d"
+                       " - not valid mail server address (mail_srv).\n",
+                       line_cnt);
+                break;
             }
             else
-                printf("Syntax error in config file on line %d.\n", line_cnt);
+                conf.mail_srv.sin_family = AF_INET;
         }
+        else
+            printf("Syntax error in config file on line %d.\n", line_cnt);
+    }
 
-        fclose(config);
+    fclose(config);
+
+    /* check whether configuration is complete */
+    if (0 == conf.mail_srv.sin_port || 0 == conf.mail_srv.sin_family) {
+        printf("Configuration error, mail server address or SMTP port "
+               "was not set\n");
+        exit(1);
     }
 
     /* load encryption/signing rules */
@@ -510,6 +533,8 @@ void load_config (void)
 void print_config (void)
 {
     size_t i;
+    char addr[INET_ADDRSTRLEN];
+    struct hostent *hp;
 
     printf("Global configuration\n\n");
 
@@ -521,7 +546,18 @@ void print_config (void)
     else
         printf("Daemon mode:  yes\n");
 
-    printf("SMTP Port:    %d\n\n", conf.smtp_port);
+    hp = gethostbyaddr(&(conf.mail_srv.sin_addr),
+            sizeof(conf.mail_srv.sin_addr), AF_INET);
+    if (NULL != hp) {
+        printf("Mail server:  %s (%s)\n", hp->h_name, inet_ntop(AF_INET,
+                &(conf.mail_srv.sin_addr), addr, INET_ADDRSTRLEN));
+    }
+    else {
+        printf("Mail server:  %s\n", inet_ntop(AF_INET,
+                &(conf.mail_srv.sin_addr), addr, INET_ADDRSTRLEN));
+    }
+
+    printf("SMTP Port:    %d\n\n", ntohs(conf.mail_srv.sin_port));
 
     printf("Config file:  %s\n", conf.config_file);
     printf("Rules file:   %s\n\n", conf.rules_file);

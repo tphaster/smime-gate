@@ -4,6 +4,9 @@
  * Author:        Tomasz Pieczerak (tphaster)
  */
 
+#ifndef __SYSTEM_H
+#define __SYSTEM_H
+
 #include <poll.h>
 #include <signal.h>
 #include <sys/socket.h>
@@ -99,11 +102,12 @@ int Socket (int family, int type, int protocol);
 void Socketpair (int family, int type, int protocol, int *fd);
 
 /* Read/write functions */
-ssize_t Readn (int fd, void *ptr, size_t nbytes);
-void Writen (int fd, void *ptr, size_t nbytes);
-ssize_t Readline (int fd, void *ptr, size_t maxlen);
+ssize_t readn (int fd, void *vptr, size_t n);
+ssize_t writen (int fd, const void *vptr, size_t n);
 
 /* System environment functions */
 void daemonize (const char *pname, int facility);
 Sigfunc *Signal (int signo, Sigfunc *func);
+
+#endif  /* __SYSTEM_H */
 

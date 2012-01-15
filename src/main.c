@@ -34,7 +34,7 @@ int main (int argc, char **argv)
     bzero(&servaddr, sizeof(servaddr));
     servaddr.sin_family      = AF_INET;
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    servaddr.sin_port        = htons(conf.smtp_port);
+    servaddr.sin_port        = htons(conf.mail_srv.sin_port);
 
     Bind(listenfd, (SA *) &servaddr, sizeof(servaddr));
 
