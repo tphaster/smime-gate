@@ -7,6 +7,8 @@
 #ifndef __MAIL_TYPES_H
 #define __MAIL_TYPES_H
 
+#include <sys/types.h>
+
 /* Mail object */
 struct mail_object {
     char *mail_from;    /* mail sender (MAIL FROM:) */

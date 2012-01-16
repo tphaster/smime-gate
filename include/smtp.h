@@ -25,12 +25,19 @@
 /** SMTP Server states (for smtp_recv_mail()) **/
 #define SMTP_SRV_NEW        0   /* use for the first receipt */
 #define SMTP_SRV_NXT        1   /* use for a next receipt */
+#define SMTP_SRV_ERR       -1   /* dysfunctional server */
+
+/** SMTP Client states (for smtp_send_mail()) **/
+#define SMTP_CLI_NEW    0x1     /* for first mail */
+#define SMTP_CLI_NXT    0x0     /* for next mail */
+#define SMTP_CLI_LST    0x2     /* for last mail (close connection) */
+#define SMTP_CLI_CON    0x0     /* don't close connection after sending */
 
 
 /*** Functions ***/
 int smtp_recv_mail (int sockfd, struct mail_object *mail, char *filename,
                     int srv);
-int smtp_send_mail (int sockfd, struct mail_object *mail);
+int smtp_send_mail (int sockfd, struct mail_object *mail, int cli);
 int save_mail_to_file (struct mail_object *mail, const char *filename);
 int load_mail_from_file (const char *filename, struct mail_object *mail);
 

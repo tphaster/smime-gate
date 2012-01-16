@@ -64,6 +64,7 @@
 #define SIZE         9
 
 /*** SMTP Server States ***/
+#define SMTP_ERR   -1       /* server is dysfunctional */
 #define SMTP_CLEAR  0       /* clear */
 #define SMTP_EHLO   1       /* after EHLO/HELO receipt */
 #define SMTP_MAIL   2       /* after MAIL receipt */

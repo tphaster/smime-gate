@@ -256,14 +256,16 @@ void load_config (void)
 
         if ('#' == buf[0] || '\n' == buf[0])  /* comment or empty line */
             continue;
-        else if (0 == strncmp("smtp_port = ", buf, 12)) { /* SMTP Port */
+        /* SMTP Port */
+        else if (0 == strncmp("smtp_port = ", buf, 12)) {
             if ((port = atoi(buf+12)) > 0)
-                conf.mail_srv.sin_port = htons(port);
+                conf.smtp_port = htons(port);
             else
                 printf("Syntax error in config file on line %d"
                        "-- bad SMTP port (smtp_port).\n", line_cnt);
         }
-        else if (0 == strncmp("rules = ", buf, 8)) { /* rules location */
+        /* rules file location */
+        else if (0 == strncmp("rules = ", buf, 8)) {
             if (NULL != conf.rules_file)
                 free(conf.rules_file);
 
@@ -272,9 +274,10 @@ void load_config (void)
             strncpy(conf.rules_file, buf+8, len);
             conf.rules_file[len-2] = '\0';
         }
-        else if (0 == strncmp("mail_srv = ", buf, 11)) { /* mail server */
-            (buf+11)[strlen(buf+11)-1] = '\0';
-            if (1 != inet_pton(AF_INET, buf+11, &(conf.mail_srv.sin_addr))) {
+        /* mail server address */
+        else if (0 == strncmp("mail_srv_addr = ", buf, 16)) {
+            (buf+16)[strlen(buf+16)-1] = '\0';
+            if (1 != inet_pton(AF_INET, buf+16, &(conf.mail_srv.sin_addr))) {
                 printf("Syntax error in config file on line %d"
                        " - not valid mail server address (mail_srv).\n",
                        line_cnt);
@@ -283,6 +286,15 @@ void load_config (void)
             else
                 conf.mail_srv.sin_family = AF_INET;
         }
+        /* mail server port */
+        else if (0 == strncmp("mail_srv_port = ", buf, 16)) {
+            if ((port = atoi(buf+16)) > 0)
+                conf.mail_srv.sin_port = htons(port);
+            else
+                printf("Syntax error in config file on line %d"
+                       "-- bad mail server port (mail_srv_port).\n", line_cnt);
+        }
+
         else
             printf("Syntax error in config file on line %d.\n", line_cnt);
     }
@@ -291,10 +303,15 @@ void load_config (void)
 
     /* check whether configuration is complete */
     if (0 == conf.mail_srv.sin_port || 0 == conf.mail_srv.sin_family) {
-        printf("Configuration error, mail server address or SMTP port "
+        printf("Configuration error, mail server address or port "
                "was not set\n");
         exit(1);
     }
+    if (0 == conf.smtp_port) {
+        conf.smtp_port = htons(DEFAULT_SMTP_PORT);
+        printf("Loaded default SMTP port as none was set.\n");
+    }
+
 
     /* load encryption/signing rules */
     if (NULL == (rules = fopen(conf.rules_file, "r"))) {
@@ -549,15 +566,17 @@ void print_config (void)
     hp = gethostbyaddr(&(conf.mail_srv.sin_addr),
             sizeof(conf.mail_srv.sin_addr), AF_INET);
     if (NULL != hp) {
-        printf("Mail server:  %s (%s)\n", hp->h_name, inet_ntop(AF_INET,
-                &(conf.mail_srv.sin_addr), addr, INET_ADDRSTRLEN));
+        printf("Mail server:  %s (%s:%d)\n", hp->h_name, inet_ntop(AF_INET,
+                &(conf.mail_srv.sin_addr), addr, INET_ADDRSTRLEN),
+                ntohs(conf.mail_srv.sin_port));
     }
     else {
-        printf("Mail server:  %s\n", inet_ntop(AF_INET,
-                &(conf.mail_srv.sin_addr), addr, INET_ADDRSTRLEN));
+        printf("Mail server:  %s:%d\n", inet_ntop(AF_INET,
+                &(conf.mail_srv.sin_addr), addr, INET_ADDRSTRLEN),
+                ntohs(conf.mail_srv.sin_port));
     }
 
-    printf("SMTP Port:    %d\n\n", ntohs(conf.mail_srv.sin_port));
+    printf("SMTP Port:    %d\n\n", ntohs(conf.smtp_port));
 
     printf("Config file:  %s\n", conf.config_file);
     printf("Rules file:   %s\n\n", conf.rules_file);

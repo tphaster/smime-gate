@@ -47,6 +47,7 @@ struct config {
     size_t in_rules_size;       /* incoming rules array size */
 
     struct sockaddr_in mail_srv;    /* mail server address */
+    uint16_t smtp_port;             /* listening port */
 };
 
 /* struct out_rule - outgoing encryption/signing rule */
