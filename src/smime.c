@@ -4,10 +4,25 @@
  * Author:       Tomasz Pieczerak (tphaster)
  */
 
-/* TODO
- *  encrypt_mail()
- *  decrypt_mail()
- *  sign_mail()
- *  verify_mail()
- */
+#include "smtp-types.h"
+
+int encrypt_mail (struct mail_object *mail __attribute__ ((__unused__)))
+{
+    return 0;
+}
+
+int decrypt_mail (struct mail_object *mail __attribute__ ((__unused__)))
+{
+    return 0;
+}
+
+int sign_mail (struct mail_object *mail __attribute__ ((__unused__)))
+{
+    return 0;
+}
+
+int verify_mail (struct mail_object *mail __attribute__ ((__unused__)))
+{
+    return 0;
+}
 
