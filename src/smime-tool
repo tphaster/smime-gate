@@ -1,0 +1,176 @@
+#!/bin/sh
+
+# S/MIME Tool
+# Author: Tomasz Pieczerak (tphaster)
+
+set -e
+
+# display usage info function
+usage(){
+    cat 1<&2 <<EOT
+Usage: `basename $0` [ACTION] [OPTION]... [MSG]
+
+Try '`basename $0` --help' for more options.
+EOT
+}
+
+# check whether file is readable
+readable(){
+    if [ "x$1" = "x" ]; then
+        echo "`basename $0`: no $2 given" 1<&2
+        usage
+        exit 1
+    fi
+
+    FILE=`readlink -f -- "$1"`
+
+    if [ ! -r "$1" ]; then
+        echo "`basename $0`: can't read $2 file" 1<&2
+        exit 1
+    fi
+
+    echo -n "$FILE"
+}
+
+# check number of arguments
+if [ $# -eq 0 ]; then
+    echo "`basename $0`: missing ACTION and MSG" 1<&2
+    usage
+    exit 1
+fi
+
+# display help on "-h" or "--help" option (it must be the first option)
+if [ "x$1" = "x--help" -o "x$1" = "x-h" ]; then
+    cat <<EOT
+S/MIME Tool 1.0, simple tool for processing S/MIME messages
+Usage: `basename $0` [ACTION] [OPTION]... [MSG]
+
+MSG is a file containing MIME message, it's mandatory. You can set encryption
+algorithm by setting ALG environment variable.
+
+Startup:
+    -h, --help  print this help.
+
+Action:
+    -encrypt    encrypt MIME message.
+    -decrypt    decrypt S/MIME message.
+    -sign       sign MIME message.
+    -verify     verify signed S/MIME message.
+
+Options:
+    -cert CERT  recipient certificate.
+    -key KEY    private key used to decrypt or sign.
+    -pass PASS  password to private key.
+    -ca CA      CA certificate.
+    -out FILE   print output to FILE.
+    -out -      print output to stdout. [default]
+
+Mail bug reports and suggestions to <tphaster AT gmail.com>.
+EOT
+    exit 0
+fi
+
+# determine action
+case $1 in
+    -encrypt) ACTION=e; shift;;
+    -decrypt) ACTION=d; shift;;
+    -sign)    ACTION=s; shift;;
+    -verify)  ACTION=v; shift;;
+    *)
+        echo "`basename $0`: bad ACTION" 1<&2
+        usage
+        exit 1
+        ;;
+esac
+
+# parse options
+while [ "x$1" != "x" ]
+do
+    case $1 in
+        --) shift; break;;      # end of options
+        -cert)                  # recipient's certificate
+            shift
+            CERT="$1"
+            shift
+            ;;
+        -key)                   # private key
+            shift
+            KEY="$1"
+            shift
+            ;;
+        -pass)                  # private key password
+            shift
+            PASS="$1"
+            shift
+            ;;
+        -ca)                    # ca certificate
+            shift
+            CA="$1"
+            shift
+            ;;
+        -out)                   # set output file
+            shift
+            if [ "x$1" = "x-"  ];then
+                OUTPUT=""
+            else
+                OUTPUT="$1"
+            fi
+            shift
+            ;;
+        -*)
+            echo "`basename $0`: unknown OPTION $1" 1<&2
+            usage
+            exit 1
+            ;;
+        *)
+            break;;
+    esac
+done
+
+# check whether there is any argument left (it must be)
+if [ "x$1" = "x" ]; then
+    echo "`basename $0`: missing MSG" 1<&2
+    usage
+    exit 1
+fi
+
+MSG=`readable "$1" "message"`
+
+# check whether there are enough parameters
+CERT=`readable "$CERT" "certificate"`
+
+case $ACTION in
+    [ds])      # decrypt/signing: key pass
+        KEY=`readable "$KEY" "private key"`
+        if [ "x$PASS" = "x" ]; then
+            echo "`basename $0`: missing password for private key" 1<&2
+            usage
+            exit 1
+        fi
+        ;;
+    v)          # verify: ca
+        CA=`readable "$CA" "CA certificate"`
+        ;;
+esac
+
+# set output stream
+if [ "$OUTPUT" ]; then
+    exec 1>"$OUTPUT"
+fi
+
+# process message
+case $ACTION in
+    e)      # encryption
+        openssl smime -encrypt -$ALG -in $MSG $CERT 2>/dev/null
+        ;;
+    d)      # decryption
+        openssl smime -decrypt -inkey $KEY -recip $CERT -passin pass:$PASS -in $MSG 2>/dev/null
+        ;;
+    s)      # signing
+        openssl smime -sign -signer $CERT -inkey $KEY -passin pass:$PASS -in $MSG 2>/dev/null
+        ;;
+    v)      # verify
+        openssl smime -verify -in $MSG -recip $CERT -CAfile $CA 2>/dev/null
+        ;;
+esac
+
