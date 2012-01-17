@@ -134,7 +134,27 @@ if [ "x$1" = "x" ]; then
     exit 1
 fi
 
+# prepare input file
 MSG=`readable "$1" "message"`
+
+# extract MIME message
+(
+    while read line
+    do
+        case $line in
+            MIME-Version:*)
+                echo -e -n "$line\n" > "$MSG.tmp"
+                break;;
+            *) 
+                echo -e -n "$line\n";;
+        esac
+    done
+
+    while read line
+    do
+        echo -e -n "$line\n" >> "$MSG.tmp"
+    done
+) < $MSG
 
 # check whether there are enough parameters
 CERT=`readable "$CERT" "certificate"`
@@ -161,16 +181,18 @@ fi
 # process message
 case $ACTION in
     e)      # encryption
-        openssl smime -encrypt -$ALG -in $MSG $CERT 2>/dev/null
+        openssl smime -encrypt $ALG -in $MSG.tmp $CERT 2>/dev/null
         ;;
     d)      # decryption
-        openssl smime -decrypt -inkey $KEY -recip $CERT -passin pass:$PASS -in $MSG 2>/dev/null
+        openssl smime -decrypt -inkey $KEY -recip $CERT -passin pass:$PASS -in $MSG.tmp 2>/dev/null
         ;;
     s)      # signing
-        openssl smime -sign -signer $CERT -inkey $KEY -passin pass:$PASS -in $MSG 2>/dev/null
+        openssl smime -sign -signer $CERT -inkey $KEY -passin pass:$PASS -in $MSG.tmp 2>/dev/null
         ;;
     v)      # verify
-        openssl smime -verify -in $MSG -recip $CERT -CAfile $CA 2>/dev/null
+        openssl smime -verify -in $MSG.tmp -recip $CERT -CAfile $CA 2>/dev/null
         ;;
 esac
+
+rm -f "$MSG.tmp"
 
