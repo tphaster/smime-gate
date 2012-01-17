@@ -19,7 +19,7 @@
  *                      send to mail server <forward-path>          */
 void smime_gate_service (int sockfd)
 {
-    int i, srvfd, ok;
+    int i, srvfd;
     int srv = SMTP_SRV_NEW;
     int no_mails = 0;
     char **fns = Calloc(MAILBUF, sizeof(char *));
@@ -65,19 +65,12 @@ void smime_gate_service (int sockfd)
     srvfd = Socket(AF_INET, SOCK_STREAM, 0);
     Connect(srvfd, (SA *) &(conf.mail_srv), sizeof(conf.mail_srv));
     srv = SMTP_SRV_NEW;
-    ok = 0;
 
     for (i = 0; i < no_mails; ++i) {
-        if (0 == smtp_send_mail(srvfd, mails[i], srv)) {
+        if (0 == smtp_send_mail(srvfd, mails[i], srv))
             remove(fns[i]);
-        }
-        else
-            ok = 1;
 
         srv = SMTP_SRV_NXT;
     }
-
-    if (0 != ok)
-        err_msg("some mail objects cannot be send, they're postponed");
 }
 

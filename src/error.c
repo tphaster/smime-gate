@@ -44,20 +44,6 @@ void err_sys (const char *fmt, ...)
     exit(1);
 }
 
-/* err_dump - fatal error related to a system call,
- *            print a message, dump core, and terminate.
- */
-void err_dump (const char *fmt, ...)
-{
-    va_list ap;
-
-    va_start(ap, fmt);
-    err_doit(1, LOG_ERR, fmt, ap);
-    va_end(ap);
-    abort();    /* dump core and terminate */
-    exit(1);    /* shouldn't get here */
-}
-
 /* err_msg - nonfatal error unrelated to a system call,
  *           print a message and return.
  */

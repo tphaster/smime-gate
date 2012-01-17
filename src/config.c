@@ -5,10 +5,6 @@
  * Author:      Tomasz Pieczerak (tphaster)
  */
 
-/* TODO
- *  load_config();
- */
-
 #include <libgen.h>
 #include <netdb.h>
 #include <stdio.h>
