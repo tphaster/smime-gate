@@ -41,30 +41,46 @@ struct config {
     char *config_file;      /* configuration file location */
     char *rules_file;       /* encryption/signing rules file location */
 
-    struct out_rule* out_rules; /* outgoing encryption/signing rules */
-    size_t out_rules_size;      /* outgoing rules array size */
-    struct in_rule* in_rules;   /* incoming encryption/signing rules */
-    size_t in_rules_size;       /* incoming rules array size */
+    struct encr_rule* encr_rules;   /* encryption rules */
+    size_t encr_rules_size;         /* encryption array size */
+    struct sign_rule* sign_rules;   /* signing rules */
+    size_t sign_rules_size;         /* signing array size */
+    struct decr_rule* decr_rules;   /* decryption rules */
+    size_t decr_rules_size;         /* decryption array size */
+    struct vrfy_rule* vrfy_rules;   /* verification rules */
+    size_t vrfy_rules_size;         /* verification array size */
 
     struct sockaddr_in mail_srv;    /* mail server address */
     uint16_t smtp_port;             /* listening port */
 };
 
-/* struct out_rule - outgoing encryption/signing rule */
-struct out_rule {
-    char *sender;           /* mail object sender */
-    char *out_domain;       /* destination domain */
-    int action;             /* sign, encrypt or both? */
-    char *sign_key_path;    /* signing key location */
-    char *encrypt_key_path; /* encryption key location */
+/* struct encr_rule - encryption rule */
+struct encr_rule {
+    char *rcpt;         /* mail recipient */
+    char *cert_path;    /* recipient's certificate location */
 };
 
-/* struct in_rule - incoming encryption/signing rule */
-struct in_rule {
-    int ok;                 /* is rule correct? */
-    char *sender;           /* mail object sender */
-    char *vsign_key_path;   /* location of key used to verify sign */
-    char *decrypt_key_path; /* location of key for decryption */
+/* struct sign_rule - signing rule */
+struct sign_rule {
+    char *sndr;         /* mail sender */
+    char *cert_path;    /* sender's certificate location */
+    char *key_path;     /* sender's private key location */
+    char *key_pass;     /* sender's private key password */
+};
+
+/* struct decr_rule - decryption rule */
+struct decr_rule {
+    char *rcpt;         /* mail recipient */
+    char *cert_path;    /* recipient's certificate location */
+    char *key_path;     /* recipient's private key location */
+    char *key_pass;     /* recipient's private key password */
+};
+
+/* struct vrfy_rule - verification rule */
+struct vrfy_rule {
+    char *sndr;         /* mail sender */
+    char *cert_path;    /* sender's certificate location */
+    char *cacert_path;  /* CA's certificate location */
 };
 
 

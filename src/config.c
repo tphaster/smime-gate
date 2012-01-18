@@ -221,20 +221,20 @@ void parse_args (int argc, char **argv)
 }
 
 /* Rules processing states */
-#define FAIL   -1       /* failure */
-#define DONE    0       /* done */
-#define ADDR    1       /* searching for mail address */
-#define DOM     2       /* searching for domain */
-#define ACTN    3       /* searching for action */
-#define EKEY    4       /* searching for encryption key */
-#define SKEY    5       /* searching for sign key */
+#define R_FAIL     -1       /* failure */
+#define R_DONE      0       /* done */
+#define R_ADDR      1       /* searching for mail address */
+#define R_CERT      2       /* searching for certificate */
+#define R_PKEY      3       /* searching for private key */
+#define R_PASS      4       /* searching for key's password */
+#define R_CACR      5       /* searching for CA's certificate */
 
 /* load_config - load configuration from config and rules file */
 void load_config (void)
 {
     FILE *config, *rules;
     char buf[CONF_MAXLEN], *tok, *beg;
-    size_t len, line_cnt, irule_cnt, orule_cnt;
+    size_t len, line_cnt, erule_cnt, drule_cnt, srule_cnt, vrule_cnt;
     int state;
     int port;
 
@@ -318,31 +318,41 @@ void load_config (void)
     }
 
     line_cnt = 0;
-    conf.out_rules_size = 0;
-    conf.in_rules_size = 0;
+    conf.encr_rules_size = 0;
+    conf.sign_rules_size = 0;
+    conf.decr_rules_size = 0;
+    conf.vrfy_rules_size = 0;
 
-    /* count incoming/outgoing rules */
+    /* count encryption/decryption/signing/verification rules */
     while (fgets(buf, CONF_MAXLEN, rules) != NULL) {
         ++line_cnt;
 
         if ('#' == buf[0] || '\n' == buf[0])  /* comment or empty line */
             continue;
-        else if (0 == strncmp("IN ", buf, 3))   /* incoming rule */
-            conf.in_rules_size += 1;
-        else if  (0 == strncmp("OUT ", buf, 4)) /* outgoing rule */
-            conf.out_rules_size += 1;
+        else if  (0 == strncmp("ENCR ", buf, 5)) /* encryption rule */
+            conf.encr_rules_size += 1;
+        else if  (0 == strncmp("SIGN ", buf, 5)) /* signing rule */
+            conf.sign_rules_size += 1;
+        else if  (0 == strncmp("DECR ", buf, 5)) /* decryption rule */
+            conf.decr_rules_size += 1;
+        else if  (0 == strncmp("VRFY ", buf, 5)) /* verify rule */
+            conf.vrfy_rules_size += 1;
         else
             printf("Syntax error in rules file on line %d.\n", line_cnt);
     }
 
     /* allocate rule arrays */
-    conf.out_rules = Calloc(conf.out_rules_size, sizeof(struct out_rule));
-    conf.in_rules = Calloc(conf.in_rules_size, sizeof(struct in_rule));
+    conf.encr_rules = Calloc(conf.encr_rules_size, sizeof(struct encr_rule));
+    conf.sign_rules = Calloc(conf.sign_rules_size, sizeof(struct sign_rule));
+    conf.decr_rules = Calloc(conf.decr_rules_size, sizeof(struct decr_rule));
+    conf.vrfy_rules = Calloc(conf.vrfy_rules_size, sizeof(struct vrfy_rule));
 
     rewind(rules);
     line_cnt = 0;
-    irule_cnt = 0;
-    orule_cnt = 0;
+    erule_cnt = 0;
+    srule_cnt = 0;
+    drule_cnt = 0;
+    vrule_cnt = 0;
 
     /* load rules */
     while (fgets(buf, CONF_MAXLEN, rules) != NULL) {
@@ -350,192 +360,334 @@ void load_config (void)
 
         if ('#' == buf[0] || '\n' == buf[0])  /* comment or empty line */
             continue;
-        else if (0 == strncmp("IN ", buf, 3)) {     /* incoming rule */
+
+        /** encryption rule **/
+        else if (0 == strncmp("ENCR ", buf, 5)) {
             size_t i;
 
-            beg = buf+3;
+            beg = buf+5;
             tok = beg;
             len = strlen(tok);
 
-            for (i = 0, state = ADDR; i < len; ++i, ++tok) {
+            for (i = 0, state = R_ADDR; i < len; ++i, ++tok) {
 
                 /* space is a separator */
-                if (state != SKEY && ' ' == *tok) {
+                if (state == R_ADDR && ' ' == *tok) {
                     *tok = '\0';
+
                     /* field should contain some data... */
                     if (0 == strlen(beg)) {
-                        state = FAIL;
+                        state = R_FAIL;
                         break;
                     }
 
-                    /* fetching sender address */
-                    if (ADDR == state) {
-                        conf.in_rules[irule_cnt].sender =
-                            Malloc(strlen(beg)+1);
-                        strcpy(conf.in_rules[irule_cnt].sender, beg);
-                        state = EKEY;   /* now look for encryption key */
-                        beg = tok+1;
-                        continue;
-                    }
-                    /* fetching decryption key */
-                    else if (EKEY == state) {
-                        conf.in_rules[irule_cnt].decrypt_key_path =
-                            Malloc(strlen(beg)+1);
-                        strcpy(conf.in_rules[irule_cnt].decrypt_key_path, beg);
-                        state = SKEY;   /* now look for sign key */
-                        beg = tok+1;
-                        continue;
-                    }
+                    /* fetching recipient address */
+                    conf.encr_rules[erule_cnt].rcpt = Malloc(strlen(beg)+1);
+                    strcpy(conf.encr_rules[erule_cnt].rcpt, beg);
+                    state = R_CERT;     /* now look for certificate key */
+                    beg = tok+1;
+                    continue;
                 }
-                /* fetching key for verifying signs */
-                else if (SKEY == state && '\n' == *tok) {
+                /* fetching certificate */
+                else if (R_CERT == state && '\n' == *tok) {
                     *tok = '\0';
 
                     /* field should contain some data... */
                     if (0 == strlen(beg)) {
-                        state = FAIL;
+                        state = R_FAIL;
                         break;
                     }
 
-                    conf.in_rules[irule_cnt].vsign_key_path =
+                    conf.encr_rules[erule_cnt].cert_path =
                         Malloc(strlen(beg)+1);
-                    strcpy(conf.in_rules[irule_cnt].vsign_key_path, beg);
+                    strcpy(conf.encr_rules[erule_cnt].cert_path, beg);
 
                     /* all needed info fetched, we're done */
-                    conf.in_rules[irule_cnt].ok = 1;
-                    state = DONE;
+                    state = R_DONE;
                     break;
                 }
                 /* reached end of line before fetching information */
                 else if ('\0' == *tok) {
-                    state = FAIL;
+                    state = R_FAIL;
                     break;
                 }
             }
 
-            if (DONE == state)
-                ++irule_cnt;
+            if (R_DONE == state)
+                ++erule_cnt;
             else {
                 printf("Syntax error in rules file on line %d.\n", line_cnt);
 
-                if (NULL != conf.in_rules[irule_cnt].sender)
-                    free(conf.in_rules[irule_cnt].sender);
-                if (NULL != conf.in_rules[irule_cnt].vsign_key_path)
-                    free(conf.in_rules[irule_cnt].vsign_key_path);
-                if (NULL != conf.in_rules[irule_cnt].decrypt_key_path)
-                    free(conf.in_rules[irule_cnt].decrypt_key_path);
-                bzero(conf.in_rules+irule_cnt, sizeof(struct in_rule));
+                if (NULL != conf.encr_rules[erule_cnt].rcpt)
+                    free(conf.encr_rules[erule_cnt].rcpt);
+                if (NULL != conf.encr_rules[erule_cnt].cert_path)
+                    free(conf.encr_rules[erule_cnt].cert_path);
+                bzero(conf.encr_rules+erule_cnt, sizeof(struct encr_rule));
             }
         }
-        else if (0 == strncmp("OUT ", buf, 4)) {   /* outgoing rule */
+        /** signing rule **/
+        else if (0 == strncmp("SIGN ", buf, 5)) {
             size_t i;
 
-            beg = buf+4;
+            beg = buf+5;
             tok = beg;
             len = strlen(tok);
 
-            for (i = 0, state = ADDR; i < len; ++i, ++tok) {
+            for (i = 0, state = R_ADDR; i < len; ++i, ++tok) {
 
                 /* space is a separator */
-                if (state != SKEY && ' ' == *tok) {
+                if (state != R_PASS && ' ' == *tok) {
                     *tok = '\0';
+
                     /* field should contain some data... */
                     if (0 == strlen(beg)) {
-                        state = FAIL;
+                        state = R_FAIL;
                         break;
                     }
 
                     /* fetching sender address */
-                    if (ADDR == state) {
-                        conf.out_rules[orule_cnt].sender =
+                    if (R_ADDR == state) {
+                        conf.sign_rules[srule_cnt].sndr =
                             Malloc(strlen(beg)+1);
-                        strcpy(conf.out_rules[orule_cnt].sender, beg);
-                        state = DOM;    /* now look for remote domain */
+                        strcpy(conf.sign_rules[srule_cnt].sndr, beg);
+
+                        state = R_CERT;     /* now look for certificate */
                         beg = tok+1;
                         continue;
                     }
-                    /* fetching remote domain name */
-                    else if (DOM == state) {
-                        conf.out_rules[orule_cnt].out_domain =
+                    /* fetching sender's certificate */
+                    else if (R_CERT == state) {
+                        conf.sign_rules[srule_cnt].cert_path =
                             Malloc(strlen(beg)+1);
-                        strcpy(conf.out_rules[orule_cnt].out_domain, beg);
-                        state = ACTN;   /* now look for action type */
+                        strcpy(conf.sign_rules[srule_cnt].cert_path, beg);
+
+                        state = R_PKEY;     /* now look for private key */
                         beg = tok+1;
                         continue;
                     }
-                    /* fetching action type */
-                    else if (ACTN == state) {
-                        if (0 == strncmp("ENCRYPT", beg, strlen(beg)))
-                            conf.out_rules[orule_cnt].action = ACTION_ENCRYPT;
-                        else if (0 == strncmp("SIGN", beg, strlen(beg)))
-                            conf.out_rules[orule_cnt].action = ACTION_SIGN;
-                        else if (0 == strncmp("BOTH", beg, strlen(beg)))
-                            conf.out_rules[orule_cnt].action = ACTION_BOTH;
-                        else {
-                            state = FAIL;
-                            break;
-                        }
+                    /* fetching private key */
+                    else if (R_PKEY == state) {
+                        conf.sign_rules[srule_cnt].key_path =
+                            Malloc(strlen(beg)+1);
+                        strcpy(conf.sign_rules[srule_cnt].key_path, beg);
 
-                        state = EKEY;    /* now look for encryption key */
-                        beg = tok+1;
-                        continue;
-                    }
-                    /* fetching encryption key */
-                    else if (EKEY == state) {
-                        if (ACTION_SIGN != conf.out_rules[orule_cnt].action) {
-                            conf.out_rules[orule_cnt].encrypt_key_path =
-                                Malloc(strlen(beg)+1);
-                            strcpy(
-                              conf.out_rules[orule_cnt].encrypt_key_path, beg);
-                        }
-
-                        state = SKEY;   /* now look for sign key */
+                        state = R_PASS; /* now look for private key password */
                         beg = tok+1;
                         continue;
                     }
                 }
-                else if (SKEY == state && '\n' == *tok) {
+                /* fetching private key password */
+                else if (R_PASS == state && '\n' == *tok) {
                     *tok = '\0';
 
                     /* field should contain some data... */
                     if (0 == strlen(beg)) {
-                        state = FAIL;
+                        state = R_FAIL;
                         break;
                     }
 
-                    if (ACTION_ENCRYPT != conf.out_rules[orule_cnt].action) {
-                        conf.out_rules[orule_cnt].sign_key_path =
-                            Malloc(strlen(beg)+1);
-                        strcpy(conf.out_rules[orule_cnt].sign_key_path, beg);
-                    }
+                    conf.sign_rules[srule_cnt].key_pass =
+                        Malloc(strlen(beg)+1);
+                    strcpy(conf.sign_rules[srule_cnt].key_pass, beg);
 
                     /* all needed info fetched, we're done */
-                    state = DONE;
+                    state = R_DONE;
                     break;
                 }
                 /* reached end of line before fetching information */
                 else if ('\0' == *tok) {
-                    state = FAIL;
+                    state = R_FAIL;
                     break;
                 }
             }
 
-            if (DONE == state)
-                ++orule_cnt;
+            if (R_DONE == state)
+                ++srule_cnt;
             else {
                 printf("Syntax error in rules file on line %d.\n", line_cnt);
 
-                if (NULL != conf.out_rules[orule_cnt].sender)
-                    free(conf.out_rules[orule_cnt].sender);
-                if (NULL != conf.out_rules[orule_cnt].out_domain)
-                    free(conf.out_rules[orule_cnt].out_domain);
-                if (NULL != conf.out_rules[orule_cnt].encrypt_key_path)
-                    free(conf.out_rules[orule_cnt].encrypt_key_path);
-                if (NULL != conf.out_rules[orule_cnt].sign_key_path)
-                    free(conf.out_rules[orule_cnt].sign_key_path);
-                bzero(conf.out_rules+orule_cnt, sizeof(struct out_rule));
+                if (NULL != conf.sign_rules[srule_cnt].sndr)
+                    free(conf.sign_rules[srule_cnt].sndr);
+                if (NULL != conf.sign_rules[srule_cnt].cert_path)
+                    free(conf.sign_rules[srule_cnt].cert_path);
+                if (NULL != conf.sign_rules[srule_cnt].key_path)
+                    free(conf.sign_rules[srule_cnt].key_path);
+                if (NULL != conf.sign_rules[srule_cnt].key_pass)
+                    free(conf.sign_rules[srule_cnt].key_pass);
+                bzero(conf.sign_rules+srule_cnt, sizeof(struct sign_rule));
+            }
+        }
+        /** decryption rule **/
+        else if (0 == strncmp("DECR ", buf, 5)) {
+            size_t i;
+
+            beg = buf+5;
+            tok = beg;
+            len = strlen(tok);
+
+            for (i = 0, state = R_ADDR; i < len; ++i, ++tok) {
+
+                /* space is a separator */
+                if (state != R_PASS && ' ' == *tok) {
+                    *tok = '\0';
+
+                    /* field should contain some data... */
+                    if (0 == strlen(beg)) {
+                        state = R_FAIL;
+                        break;
+                    }
+
+                    /* fetching recipient address */
+                    if (R_ADDR == state) {
+                        conf.decr_rules[drule_cnt].rcpt =
+                            Malloc(strlen(beg)+1);
+                        strcpy(conf.decr_rules[drule_cnt].rcpt, beg);
+
+                        state = R_CERT;     /* now look for certificate */
+                        beg = tok+1;
+                        continue;
+                    }
+                    /* fetching sender's certificate */
+                    else if (R_CERT == state) {
+                        conf.decr_rules[drule_cnt].cert_path =
+                            Malloc(strlen(beg)+1);
+                        strcpy(conf.decr_rules[drule_cnt].cert_path, beg);
+
+                        state = R_PKEY;     /* now look for private key */
+                        beg = tok+1;
+                        continue;
+                    }
+                    /* fetching private key */
+                    else if (R_PKEY == state) {
+                        conf.decr_rules[drule_cnt].key_path =
+                            Malloc(strlen(beg)+1);
+                        strcpy(conf.decr_rules[drule_cnt].key_path, beg);
+
+                        state = R_PASS; /* now look for private key password */
+                        beg = tok+1;
+                        continue;
+                    }
+                }
+                /* fetching private key password */
+                else if (R_PASS == state && '\n' == *tok) {
+                    *tok = '\0';
+
+                    /* field should contain some data... */
+                    if (0 == strlen(beg)) {
+                        state = R_FAIL;
+                        break;
+                    }
+
+                    conf.decr_rules[drule_cnt].key_pass =
+                        Malloc(strlen(beg)+1);
+                    strcpy(conf.decr_rules[drule_cnt].key_pass, beg);
+
+                    /* all needed info fetched, we're done */
+                    state = R_DONE;
+                    break;
+                }
+                /* reached end of line before fetching information */
+                else if ('\0' == *tok) {
+                    state = R_FAIL;
+                    break;
+                }
             }
 
+            if (R_DONE == state)
+                ++drule_cnt;
+            else {
+                printf("Syntax error in rules file on line %d.\n", line_cnt);
+
+                if (NULL != conf.decr_rules[drule_cnt].rcpt)
+                    free(conf.decr_rules[drule_cnt].rcpt);
+                if (NULL != conf.decr_rules[drule_cnt].cert_path)
+                    free(conf.decr_rules[drule_cnt].cert_path);
+                if (NULL != conf.decr_rules[drule_cnt].key_path)
+                    free(conf.decr_rules[drule_cnt].key_path);
+                if (NULL != conf.decr_rules[drule_cnt].key_pass)
+                    free(conf.decr_rules[drule_cnt].key_pass);
+                bzero(conf.decr_rules+drule_cnt, sizeof(struct decr_rule));
+            }
+        }
+        /** verification rule **/
+        else if (0 == strncmp("VRFY ", buf, 5)) {
+            size_t i;
+
+            beg = buf+5;
+            tok = beg;
+            len = strlen(tok);
+
+            for (i = 0, state = R_ADDR; i < len; ++i, ++tok) {
+
+                /* space is a separator */
+                if (state != R_CACR && ' ' == *tok) {
+                    *tok = '\0';
+
+                    /* field should contain some data... */
+                    if (0 == strlen(beg)) {
+                        state = R_FAIL;
+                        break;
+                    }
+
+                    /* fetching sender address */
+                    if (R_ADDR == state) {
+                        conf.vrfy_rules[vrule_cnt].sndr =
+                            Malloc(strlen(beg)+1);
+                        strcpy(conf.vrfy_rules[vrule_cnt].sndr, beg);
+
+                        state = R_CERT;     /* now look for certificate */
+                        beg = tok+1;
+                        continue;
+                    }
+                    /* fetching sender's certificate */
+                    else if (R_CERT == state) {
+                        conf.vrfy_rules[vrule_cnt].cert_path =
+                            Malloc(strlen(beg)+1);
+                        strcpy(conf.vrfy_rules[vrule_cnt].cert_path, beg);
+
+                        state = R_CACR;     /* now look for CA certificate */
+                        beg = tok+1;
+                        continue;
+                    }
+                }
+                /* fetching CA certificate */
+                else if (R_CACR == state && '\n' == *tok) {
+                    *tok = '\0';
+
+                    /* field should contain some data... */
+                    if (0 == strlen(beg)) {
+                        state = R_FAIL;
+                        break;
+                    }
+
+                    conf.vrfy_rules[vrule_cnt].cacert_path =
+                        Malloc(strlen(beg)+1);
+                    strcpy(conf.vrfy_rules[vrule_cnt].cacert_path, beg);
+
+                    /* all needed info fetched, we're done */
+                    state = R_DONE;
+                    break;
+                }
+                /* reached end of line before fetching information */
+                else if ('\0' == *tok) {
+                    state = R_FAIL;
+                    break;
+                }
+            }
+
+            if (R_DONE == state)
+                ++vrule_cnt;
+            else {
+                printf("Syntax error in rules file on line %d.\n", line_cnt);
+
+                if (NULL != conf.vrfy_rules[vrule_cnt].sndr)
+                    free(conf.vrfy_rules[vrule_cnt].sndr);
+                if (NULL != conf.vrfy_rules[vrule_cnt].cert_path)
+                    free(conf.vrfy_rules[vrule_cnt].cert_path);
+                if (NULL != conf.vrfy_rules[vrule_cnt].cacert_path)
+                    free(conf.vrfy_rules[vrule_cnt].cacert_path);
+                bzero(conf.vrfy_rules+vrule_cnt, sizeof(struct vrfy_rule));
+            }
         }
         else
             printf("Syntax error in rules file on line %d.\n", line_cnt);
@@ -581,37 +733,45 @@ void print_config (void)
 
     printf("Loaded rules:\n");
 
-    /* print rules for outgoing traffic */
-    for (i = 0; i < conf.out_rules_size; ++i) {
-        if (ACTION_SIGN == conf.out_rules[i].action)
-            printf("  Sign mails from %s to %s domain with key %s\n",
-                    conf.out_rules[i].sender, conf.out_rules[i].out_domain,
-                    conf.out_rules[i].sign_key_path);
-        else if (ACTION_ENCRYPT == conf.out_rules[i].action)
-            printf("  Encrypt mails from %s to %s domain with key %s\n",
-                    conf.out_rules[i].sender, conf.out_rules[i].out_domain,
-                    conf.out_rules[i].encrypt_key_path);
-        else if (ACTION_BOTH == conf.out_rules[i].action) {
-            printf("/ Encrypt mails from %s to %s domain with key %s\n",
-                    conf.out_rules[i].sender, conf.out_rules[i].out_domain,
-                    conf.out_rules[i].encrypt_key_path);
-            printf("\\ Sign mails from %s to %s domain with key %s\n",
-                    conf.out_rules[i].sender, conf.out_rules[i].out_domain,
-                    conf.out_rules[i].sign_key_path);
+    /* print rules for encryption */
+    for (i = 0; i < conf.encr_rules_size; ++i) {
+        if (NULL != conf.encr_rules[i].rcpt) {
+            printf(" Encrypt mails to %s with certificate %s\n",
+                    conf.encr_rules[i].rcpt, conf.encr_rules[i].cert_path);
         }
     }
     printf("\n");
 
-    /* print rules for incoming traffic */
-    for (i = 0; i < conf.in_rules_size; ++i) {
-        if (conf.in_rules[i].ok) {
-            printf("/ Decrypt mails from %s with key %s\n",
-                    conf.in_rules[i].sender,
-                    conf.in_rules[i].decrypt_key_path);
-            printf("\\ Verify mail signs from %s with key %s\n",
-                    conf.in_rules[i].sender,
-                    conf.in_rules[i].vsign_key_path);
+    /* print rules for signing */
+    for (i = 0; i < conf.sign_rules_size; ++i) {
+        if (NULL != conf.sign_rules[i].sndr) {
+            printf(" Sign mails from %s with certificate %s,"
+                   " key %s (password: %s)\n", conf.sign_rules[i].sndr,
+                    conf.sign_rules[i].cert_path, conf.sign_rules[i].key_path,
+                    conf.sign_rules[i].key_pass);
         }
     }
+    printf("\n");
+
+    /* print rules for decryption */
+    for (i = 0; i < conf.decr_rules_size; ++i) {
+        if (NULL != conf.decr_rules[i].rcpt) {
+            printf(" Decrypt mails from %s with certificate %s,"
+                   " key %s (password: %s)\n", conf.decr_rules[i].rcpt,
+                    conf.decr_rules[i].cert_path, conf.decr_rules[i].key_path,
+                    conf.decr_rules[i].key_pass);
+        }
+    }
+    printf("\n");
+
+    /* print rules for verification */
+    for (i = 0; i < conf.vrfy_rules_size; ++i) {
+        if (NULL != conf.vrfy_rules[i].sndr) {
+            printf(" Verify mails from %s with certificate %s (CA: %s)\n",
+                    conf.vrfy_rules[i].sndr, conf.vrfy_rules[i].cert_path,
+                    conf.vrfy_rules[i].cacert_path);
+        }
+    }
+    printf("\n");
 }
 
