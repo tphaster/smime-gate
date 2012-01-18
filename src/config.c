@@ -238,7 +238,8 @@ void load_config (void)
     int state;
     int port;
 
-    /* load program configuration */
+    /*** load program configuration ***/
+
     if (NULL == (config = fopen(conf.config_file, "r"))) {
         printf("Can't read '%s' configuration file.\n", conf.config_file);
         usage();
@@ -309,7 +310,8 @@ void load_config (void)
     }
 
 
-    /* load encryption/signing rules */
+    /*** load encryption/signing rules ***/
+
     if (NULL == (rules = fopen(conf.rules_file, "r"))) {
         printf("Can't read '%s' rules file.\n", conf.rules_file);
         exit(1);

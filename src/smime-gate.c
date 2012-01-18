@@ -14,6 +14,8 @@
 #define FNMAXLEN    32  /* filename maximum length */
 #define MAILBUF      5  /* mail buffer size */
 
+int smime_process_mails (struct mail_object **mails, char **fns, int no_mails);
+
 
 /* smime_gate_service - receive mails from client, process them and *
  *                      send to mail server <forward-path>          */
@@ -59,7 +61,7 @@ void smime_gate_service (int sockfd)
     if (0 == no_mails)
         return;     /* no mails to process */
 
-    /* TODO: encrypt/sign mail according to rules */
+    smime_process_mails(mails, fns, no_mails);
 
     /* forward all received mail objects */
     srvfd = Socket(AF_INET, SOCK_STREAM, 0);
@@ -72,5 +74,10 @@ void smime_gate_service (int sockfd)
 
         srv = SMTP_SRV_NXT;
     }
+}
+
+int smime_process_mails (struct mail_object **mails, char **fns, int no_mails)
+{
+    return 1;
 }
 

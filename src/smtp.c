@@ -301,6 +301,7 @@ int smtp_recv_mail (int sockfd, struct mail_object *mail, char *filename,
                 }
                 else if (RSET == cmd.code) {
                     free_mail_object(mail);
+                    state = SMTP_EHLO;
                     ret = smtp_send_reply(sockfd, R250, NULL, 0); /* OK */
                 }
                 else if (NOOP == cmd.code)
@@ -363,6 +364,7 @@ int smtp_recv_mail (int sockfd, struct mail_object *mail, char *filename,
                 }
                 else if (RSET == cmd.code) {
                     free_mail_object(mail);
+                    state = SMTP_EHLO;
                     ret = smtp_send_reply(sockfd, R250, NULL, 0);   /* OK */
                 }
                 else if (NOOP == cmd.code)
