@@ -4,9 +4,9 @@
 
 OBJECTS = \
 	src/config.o src/error.o src/main.o src/rwwrap.o \
-	src/signal.o src/smime-gate.o src/smime.o \
-	src/smtp-lib.o src/smtp-types.o src/smtp.o \
-	src/sysenv.o src/wrapsock.o src/wrapunix.o
+	src/signal.o src/smime-gate.o src/smtp-lib.o \
+	src/smtp-types.o src/smtp.o src/sysenv.o \
+	src/wrapsock.o src/wrapunix.o
 
 CC = gcc
 CFLAGS = -pedantic-errors -Wall -Wextra

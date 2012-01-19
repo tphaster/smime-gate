@@ -1,16 +1,16 @@
 # DO NOT DELETE
 
-src/config.c: include/config.h include/system.h
-src/error.c: include/system.h
-src/main.c: include/config.h include/system.h include/smime-gate.h
-src/rwwrap.c: include/system.h
-src/signal.c: include/system.h
-src/smime-gate.c: include/config.h include/smtp.h include/smtp-types.h
-src/smime-gate.c: include/system.h
-src/smtp-lib.c: include/smtp-lib.h include/smtp-types.h include/system.h
-src/smtp-types.c: include/smtp-types.h
-src/smtp.c: include/smtp-lib.h include/smtp-types.h include/smtp.h
-src/smtp.c: include/system.h
-src/sysenv.c: include/system.h
-src/wrapsock.c: include/system.h
-src/wrapunix.c: include/system.h
+src/config.o: include/config.h include/system.h
+src/error.o: include/system.h
+src/main.o: include/config.h include/system.h include/smime-gate.h
+src/rwwrap.o: include/system.h
+src/signal.o: include/system.h
+src/smime-gate.o: include/config.h include/smtp.h include/smtp-types.h
+src/smime-gate.o: include/system.h
+src/smtp-lib.o: include/smtp-lib.h include/smtp-types.h include/system.h
+src/smtp-types.o: include/smtp-types.h
+src/smtp.o: include/smtp-lib.h include/smtp-types.h include/smtp.h
+src/smtp.o: include/system.h
+src/sysenv.o: include/system.h
+src/wrapsock.o: include/system.h
+src/wrapunix.o: include/system.h
