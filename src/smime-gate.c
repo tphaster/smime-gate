@@ -7,15 +7,19 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
+#include <time.h>
+#include <sys/types.h>
 #include "config.h"
 #include "smtp.h"
 #include "system.h"
 
 /** Constants **/
 #define FNMAXLEN    32  /* filename maximum length */
-#define MAILBUF      5  /* mail buffer size */
+#define MAILBUF     10  /* mail buffer size */
 #define CMDMAXLEN  512  /* command maximum lenght */
 
+char *generate_filename (unsigned int nr);
 int smime_process_mails (struct mail_object **mails, char **fns, int no_mails);
 char *strcasestr(const char *haystack, const char *needle);
 
@@ -28,18 +32,20 @@ void smime_gate_service (int sockfd)
     int srv = SMTP_SRV_NEW;
     int no_mails = 0;
     char **fns = Calloc(MAILBUF, sizeof(char *));
-    char *filename = Malloc(FNMAXLEN);
+    char *filename;
     struct mail_object **mails = Calloc(MAILBUF, sizeof(struct mail_object *));
     struct mail_object *mail = Malloc(sizeof(struct mail_object));
 
-    /* TODO: generate filename */
+    if (NULL == (filename = generate_filename(no_mails)))
+        err_sys("malloc error");
 
+    /* receive mail objects from client */
     while (0 == smtp_recv_mail(sockfd, mail, filename, srv)) {
         mails[no_mails] = mail;
         fns[no_mails] = filename;
         ++no_mails;
 
-        if (NULL == (filename = malloc(FNMAXLEN))) {
+        if (NULL == (filename = generate_filename(no_mails))) {
             srv = SMTP_SRV_ERR;
             filename = NULL;
             mail = NULL;
@@ -79,6 +85,24 @@ void smime_gate_service (int sockfd)
     }
 }
 
+/* generate_filename - generate unique filename for mail, returns allocated *
+ *                     pointer (behaves like malloc())                      */
+char *generate_filename (unsigned int nr)
+{
+    char *fn = malloc(FNMAXLEN);
+    unsigned int t, p;
+
+    if (NULL != fn) {
+        t = time(NULL);
+        p = getpid();
+
+        snprintf(fn, FNMAXLEN, "mail%d_%d-%d", t, p, nr);
+    }
+
+    return fn;
+}
+
+/* smime_process_mails - process mail objects, according to rules in config */
 int smime_process_mails (struct mail_object **mails, char **fns, int no_mails)
 {
     int m, toprcs;
@@ -217,7 +241,6 @@ int smime_process_mails (struct mail_object **mails, char **fns, int no_mails)
             }
         }
         /** end of verification rules **/
-
     }
 
     return 0;

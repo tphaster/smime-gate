@@ -17,8 +17,9 @@
 #define VERSION         "0.1"   /* release version */
 
 /* Defaults */
-#define DEFAULT_CONFIG_FILE     "./config"
-#define DEFAULT_RULES_FILE      "./rules"
+#define DEFAULT_CONFIG_FILE     "/etc/smtp-gate/config"
+#define DEFAULT_RULES_FILE      "/etc/smtp-gate/rules"
+#define DEFAULT_WORKING_DIR     "/tmp/smtp-gate"
 #define DEFAULT_SMTP_PORT       587
 
 #define CONF_MAXLEN     256     /* maximum line length of config/rules files */
