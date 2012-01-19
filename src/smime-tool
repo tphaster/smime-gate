@@ -191,6 +191,7 @@ case $ACTION in
         ;;
     v)      # verify
         openssl smime -verify -in $MSG.tmp -recip $CERT -CAfile $CA 2>/dev/null
+        echo -e -n "\r\n=== Verification successful ===\r\n"
         ;;
 esac
 
