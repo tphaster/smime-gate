@@ -30,7 +30,7 @@ int smtp_send_mail (int sockfd, struct mail_object *mail, int cli)
         return NULLPTR;
 
     /* only for new SMTP sessions */
-    if (cli & SMTP_SRV_NEW) {
+    if (cli & SMTP_CLI_NEW) {
         /* Receive first welcome reply */
         if (0 != smtp_recv_reply(sockfd, &rply) || R220 != rply.code) {
             close(sockfd);
@@ -119,12 +119,17 @@ int smtp_send_mail (int sockfd, struct mail_object *mail, int cli)
     }
 
     /* Sending data */
-    if ((ssize_t)mail->data_size != writen(sockfd, mail->data, mail->data_size)
-        && 3 != writen(sockfd, ".\r\n", 3))
+    if (((ssize_t) mail->data_size)
+            != writen(sockfd, mail->data, mail->data_size))
     {
         close(sockfd);
         return ESENDERR;
     }
+    if (3 != writen(sockfd, ".\r\n", 3)) {  /* ending sequence */
+        close(sockfd);
+        return ESENDERR;
+    }
+
     if (0 != smtp_recv_reply(sockfd, &rply) || R250 != rply.code) {
         close(sockfd);
         return ERECVERR;
