@@ -11,7 +11,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
 #include <arpa/inet.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include "config.h"
 #include "system.h"
 
@@ -34,7 +37,7 @@ static void version (void)
 /* usage - print information about program usage */
 static void usage (void)
 {
-    printf("Usage: %s [OPTION]...\n\n"
+    fprintf(stderr, "Usage: %s [OPTION]...\n\n"
            "Try '%s --help' for more options.\n",
             conf.prog_name, conf.prog_name);
 }
@@ -54,8 +57,8 @@ static void help (void)
            "  -d,  --daemon         smime-gate will detach and become a daemon\n");
 
     printf("Configuration files:\n"
-           "  -c,  --config=FILE    get config from FILE.\n"
-           "  -r,  --rules=FILE     get encryption/signing rules from FILE\n");
+           "  -c FILE,  --config=FILE   get config from FILE.\n"
+           "  -r FILE,  --rules=FILE    get encryption/signing rules from FILE\n");
 
     printf("\nMail bug reports and suggestions to <tphaster AT gmail.com>.\n");
 }
@@ -102,7 +105,7 @@ void parse_args (int argc, char **argv)
             /* --config=FILE */
             else if (0 == strncmp(arg+2, "config", 6)) {
                 if ('=' != arg[8] || '\0' == arg[9]) {
-                    printf("No FILE given in 'config' option.\n");
+                    fprintf(stderr, "No FILE given in 'config' option.\n");
                     usage();
                     exit(1);
                 }
@@ -114,7 +117,7 @@ void parse_args (int argc, char **argv)
             /* --rules=FILE */
             else if (0 == strncmp(arg+2, "rules", 5)) {
                 if ('=' != arg[7] || '\0' == arg[8]) {
-                    printf("No FILE given in 'rules' option.\n");
+                    fprintf(stderr, "No FILE given in 'rules' option.\n");
                     usage();
                     exit(1);
                 }
@@ -124,7 +127,7 @@ void parse_args (int argc, char **argv)
                 strncpy(conf.rules_file, arg+8, len);
             }
             else {
-                printf("Unknown option.\n");
+                fprintf(stderr, "Unknown option.\n");
                 usage();
                 exit(1);
             }
@@ -147,7 +150,7 @@ void parse_args (int argc, char **argv)
                 case 'c':       /* -c FILE */
                     /* FILE should be in the next argument */
                     if (--argc <= 0) {
-                        printf("No FILE given in 'config' option.\n");
+                        fprintf(stderr, "No FILE given in 'config' option.\n");
                         usage();
                         exit(1);
                     }
@@ -161,7 +164,7 @@ void parse_args (int argc, char **argv)
                 case 'r':       /* -r FILE */
                     /* FILE should be in the next argument */
                     if (--argc <= 0) {
-                        printf("No FILE given in 'rules' option.\n");
+                        fprintf(stderr, "No FILE given in 'rules' option.\n");
                         usage();
                         exit(1);
                     }
@@ -173,21 +176,21 @@ void parse_args (int argc, char **argv)
                     break;
 
                 default:        /* unknown argument */
-                    printf("Unknown option.\n");
+                    fprintf(stderr, "Unknown option.\n");
                     usage();
                     exit(1);
             }
         }
         /* bad argument format */
         else {
-            printf("Bad argument(s).\n");
+            fprintf(stderr, "Bad argument(s).\n");
             usage();
             exit(1);
         }
     }
 
     if (0 != argc) {
-        printf("Bad arguments.\n");
+        fprintf(stderr, "Bad arguments.\n");
         usage();
         exit(1);
     }
@@ -197,11 +200,13 @@ void parse_args (int argc, char **argv)
         len = strlen(DEFAULT_CONFIG_FILE)+1;
         conf.config_file = Malloc(len);
         strncpy(conf.config_file, DEFAULT_CONFIG_FILE, len);
-        printf("Using default configuration file '%s'.\n", conf.config_file);
+        fprintf(stderr, "Using default configuration file '%s'.\n",
+                conf.config_file);
     }
     /* check if set config file is readable */
     if (0 != access(conf.config_file, R_OK)) {
-        printf("Can't read '%s' configuration file.\n", conf.config_file);
+        fprintf(stderr, "Can't read '%s' configuration file.\n",
+                conf.config_file);
         usage();
         exit(1);
     }
@@ -214,8 +219,16 @@ void parse_args (int argc, char **argv)
     }
     /* check if set rules file is readable */
     else if (0 != access(conf.rules_file, R_OK)) {
-        printf("Can't read %s file (given in 'rules' option).\n", conf.rules_file);
+        fprintf(stderr, "Can't read %s file (given in 'rules' option).\n",
+                conf.rules_file);
         usage();
+        exit(1);
+    }
+
+    /* create working directory */
+    if (0 != mkdir(DEFAULT_WORKING_DIR, 0755) && EEXIST != errno) {
+        fprintf(stderr, "Can't create working directory '%s'.\n",
+                DEFAULT_WORKING_DIR);
         exit(1);
     }
 }
@@ -241,7 +254,8 @@ void load_config (void)
     /*** load program configuration ***/
 
     if (NULL == (config = fopen(conf.config_file, "r"))) {
-        printf("Can't read '%s' configuration file.\n", conf.config_file);
+        fprintf(stderr, "Can't read '%s' configuration file.\n",
+                conf.config_file);
         usage();
         exit(1);
     }
@@ -258,7 +272,7 @@ void load_config (void)
             if ((port = atoi(buf+12)) > 0)
                 conf.smtp_port = htons(port);
             else
-                printf("Syntax error in config file on line %d"
+                fprintf(stderr, "Syntax error in config file on line %d"
                        "-- bad SMTP port (smtp_port).\n", line_cnt);
         }
         /* rules file location */
@@ -275,7 +289,7 @@ void load_config (void)
         else if (0 == strncmp("mail_srv_addr = ", buf, 16)) {
             (buf+16)[strlen(buf+16)-1] = '\0';
             if (1 != inet_pton(AF_INET, buf+16, &(conf.mail_srv.sin_addr))) {
-                printf("Syntax error in config file on line %d"
+                fprintf(stderr, "Syntax error in config file on line %d"
                        " - not valid mail server address (mail_srv).\n",
                        line_cnt);
                 break;
@@ -288,32 +302,33 @@ void load_config (void)
             if ((port = atoi(buf+16)) > 0)
                 conf.mail_srv.sin_port = htons(port);
             else
-                printf("Syntax error in config file on line %d"
+                fprintf(stderr, "Syntax error in config file on line %d"
                        "-- bad mail server port (mail_srv_port).\n", line_cnt);
         }
 
         else
-            printf("Syntax error in config file on line %d.\n", line_cnt);
+            fprintf(stderr, "Syntax error in config file on line %d.\n",
+                    line_cnt);
     }
 
     fclose(config);
 
     /* check whether configuration is complete */
     if (0 == conf.mail_srv.sin_port || 0 == conf.mail_srv.sin_family) {
-        printf("Configuration error, mail server address or port "
+        fprintf(stderr, "Configuration error, mail server address or port "
                "was not set\n");
         exit(1);
     }
     if (0 == conf.smtp_port) {
         conf.smtp_port = htons(DEFAULT_SMTP_PORT);
-        printf("Loaded default SMTP port as none was set.\n");
+        fprintf(stderr, "Loaded default SMTP port as none was set.\n");
     }
 
 
     /*** load encryption/signing rules ***/
 
     if (NULL == (rules = fopen(conf.rules_file, "r"))) {
-        printf("Can't read '%s' rules file.\n", conf.rules_file);
+        fprintf(stderr, "Can't read '%s' rules file.\n", conf.rules_file);
         exit(1);
     }
 
@@ -338,7 +353,8 @@ void load_config (void)
         else if  (0 == strncmp("VRFY ", buf, 5)) /* verify rule */
             conf.vrfy_rules_size += 1;
         else
-            printf("Syntax error in rules file on line %d.\n", line_cnt);
+            fprintf(stderr, "Syntax error in rules file on line %d.\n",
+                    line_cnt);
     }
 
     /* allocate rule arrays */
@@ -416,7 +432,8 @@ void load_config (void)
             if (R_DONE == state)
                 ++erule_cnt;
             else {
-                printf("Syntax error in rules file on line %d.\n", line_cnt);
+                fprintf(stderr, "Syntax error in rules file on line %d.\n",
+                        line_cnt);
 
                 if (NULL != conf.encr_rules[erule_cnt].rcpt)
                     free(conf.encr_rules[erule_cnt].rcpt);
@@ -504,7 +521,8 @@ void load_config (void)
             if (R_DONE == state)
                 ++srule_cnt;
             else {
-                printf("Syntax error in rules file on line %d.\n", line_cnt);
+                fprintf(stderr, "Syntax error in rules file on line %d.\n",
+                        line_cnt);
 
                 if (NULL != conf.sign_rules[srule_cnt].sndr)
                     free(conf.sign_rules[srule_cnt].sndr);
@@ -596,7 +614,8 @@ void load_config (void)
             if (R_DONE == state)
                 ++drule_cnt;
             else {
-                printf("Syntax error in rules file on line %d.\n", line_cnt);
+                fprintf(stderr, "Syntax error in rules file on line %d.\n",
+                        line_cnt);
 
                 if (NULL != conf.decr_rules[drule_cnt].rcpt)
                     free(conf.decr_rules[drule_cnt].rcpt);
@@ -678,7 +697,8 @@ void load_config (void)
             if (R_DONE == state)
                 ++vrule_cnt;
             else {
-                printf("Syntax error in rules file on line %d.\n", line_cnt);
+                fprintf(stderr, "Syntax error in rules file on line %d.\n",
+                        line_cnt);
 
                 if (NULL != conf.vrfy_rules[vrule_cnt].sndr)
                     free(conf.vrfy_rules[vrule_cnt].sndr);
@@ -690,7 +710,8 @@ void load_config (void)
             }
         }
         else
-            printf("Syntax error in rules file on line %d.\n", line_cnt);
+            fprintf(stderr, "Syntax error in rules file on line %d.\n",
+                    line_cnt);
     }
 
     fclose(rules);

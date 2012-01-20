@@ -23,6 +23,10 @@ int main (int argc, char **argv)
     parse_args(argc, argv);
     load_config();
 
+#ifdef DEBUG
+    print_config();
+#endif
+
     /* become a daemon, if it is set so*/
     if (0 != conf.daemon)
         daemonize(conf.prog_name, 0);
@@ -34,7 +38,7 @@ int main (int argc, char **argv)
     bzero(&servaddr, sizeof(servaddr));
     servaddr.sin_family      = AF_INET;
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    servaddr.sin_port        = htons(conf.smtp_port);
+    servaddr.sin_port        = conf.smtp_port;
 
     Bind(listenfd, (SA *) &servaddr, sizeof(servaddr));
 

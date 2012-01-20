@@ -15,7 +15,7 @@
 #include "system.h"
 
 /** Constants **/
-#define FNMAXLEN    32  /* filename maximum length */
+#define FNMAXLEN    48  /* filename maximum length */
 #define MAILBUF     10  /* mail buffer size */
 #define CMDMAXLEN  512  /* command maximum lenght */
 
@@ -96,7 +96,7 @@ char *generate_filename (unsigned int nr)
         t = time(NULL);
         p = getpid();
 
-        snprintf(fn, FNMAXLEN, "mail%d_%d-%d", t, p, nr);
+        snprintf(fn, FNMAXLEN, DEFAULT_WORKING_DIR "/mail%d_%d-%d", t, p, nr);
     }
 
     return fn;

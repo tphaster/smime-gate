@@ -50,7 +50,7 @@ void sig_chld (int signo __attribute__((__unused__)))
     int stat;
 
     while ( (pid = waitpid(-1, &stat, WNOHANG)) > 0)
-        printf("child %d terminated\n", pid);
+        err_msg("child %d terminated\n", pid);
     return;
 }
 

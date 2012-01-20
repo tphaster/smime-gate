@@ -384,7 +384,7 @@ int smtp_send_reply (int sockfd, size_t code, const char *msg, size_t msg_len)
     }
 
     /* user defined message */
-    if (NULL == msg) {
+    if (NULL != msg) {
         pos = 4;
         strncpy(rply_line+pos, msg, min(msg_len,LINE_MAXLEN-pos-3));
         pos += min(LINE_MAXLEN-pos-3, strlen(msg));

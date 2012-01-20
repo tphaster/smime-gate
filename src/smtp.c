@@ -450,9 +450,11 @@ again:
  *                       memory.                                             */
 
 /* data receipt states */
-#define DSTART       0      /* clear */
-#define DDOT_READ    1      /* "." received */
-#define DCR_READ     2      /* CR received */
+#define D_START     0       /* clear, lookin for CR */
+#define D1_LF       1       /* CR received, looking for LF */
+#define D2_DOT      2       /* LF received, looking for dot */
+#define D3_CR       3       /* dot received, looking for CR */
+#define D4_LF       4       /* second CR received, looking for LF */
 
 static ssize_t smtp_recv_mail_data (int sockfd, char **buf_ptr,
                                     size_t *buf_size)
@@ -461,8 +463,10 @@ static ssize_t smtp_recv_mail_data (int sockfd, char **buf_ptr,
     size_t n, buflen;
     char c, *ptr, *buf, *temp_buf;
 
-    state = DSTART;
-    buf = malloc(MAIL_START_LEN * sizeof(char));
+    if (NULL == (buf = malloc(MAIL_START_LEN * sizeof(char))))
+        return -1;
+
+    state = D_START;
     ptr = buf;
     buflen = MAIL_START_LEN;
     n = 0;
@@ -471,24 +475,44 @@ static ssize_t smtp_recv_mail_data (int sockfd, char **buf_ptr,
         if ( (rc = buf_read(sockfd, &c)) == 1) {
             *ptr++ = c;
 
-            if (DCR_READ == state) {
+            if (D4_LF == state) {
                 if (c == '\n') {    /* end of mail */
-                    n -= 3; /* ".CRLF" isn't a part of mail */
+                    n -= 3;     /* ".CRLF" isn't a part of mail */
                     break;
                 }
+                else if (c == '\r')
+                    state = D1_LF;  /* CR read; check for LF in next turn */
                 else
-                    state = DSTART;
+                    state = D_START;
             }
-            else if (DDOT_READ == state) {
-                if (c == '\r') {
-                    state = DCR_READ;   /* CR read; next turn check for LF */
-                    continue;
-                }
+            else if (D3_CR == state) {
+                if (c == '\r')
+                    state = D4_LF;  /* second CR read; check for *
+                                     * second LF in next turn    */
+                else if (c == '\r')
+                    state = D1_LF;  /* CR read; check for LF in next turn */
                 else
-                    state = DSTART;
+                    state = D_START;
             }
-            else if (c == '.')
-                state = DDOT_READ;   /* "." read; check for CR in next turn */
+            else if (D2_DOT == state) {
+                if (c == '.')
+                    state = D3_CR;  /* dot read; check for second *
+                                     * CR in next turn            */
+                else if (c == '\r')
+                    state = D1_LF;  /* CR read; check for LF in next turn */
+                else
+                    state = D_START;
+            }
+            else if (D1_LF == state) {
+                if (c == '\n')
+                    state = D2_DOT; /* LF read; next turn check for dot */
+                else if (c == '\r')
+                    state = D1_LF;  /* CR read; check for LF in next turn */
+                else
+                    state = D_START;
+            }
+            else if (c == '\r')
+                state = D1_LF;  /* CR read; check for LF in next turn */
         }
         else {
             *buf_ptr = NULL;
@@ -506,7 +530,10 @@ static ssize_t smtp_recv_mail_data (int sockfd, char **buf_ptr,
         if (n == buflen) {
             buflen += MAIL_START_LEN;
             temp_buf = buf;
-            buf = malloc(buflen * sizeof(char));
+            if (NULL == (buf = malloc(buflen * sizeof(char)))) {
+                free(temp_buf);
+                return -1;
+            }
             ptr = buf+n;
             memcpy(buf, temp_buf, n);
 
