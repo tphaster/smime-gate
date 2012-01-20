@@ -35,13 +35,6 @@ void Close (int fd)
         err_sys("close error");
 }
 
-void Gettimeofday (struct timeval *tv, void *foo)
-{
-    if (gettimeofday(tv, foo) == -1)
-        err_sys("gettimeofday error");
-    return;
-}
-
 pid_t Fork(void)
 {
     pid_t pid;
