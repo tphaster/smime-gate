@@ -73,16 +73,19 @@
 
 
 /*** Constants ***/
-#define LINE_MAXLEN         256     /* maximum SMTP line length  */
-#define DOMAIN_MAXLEN       128     /* maximum domain name length */
-#define ADDR_MAXLEN         128     /* maximum mail address length */
-#define CMD_MAXLEN          128     /* maximum command data length */
+#define LINE_MAXLEN         512     /* maximum SMTP line length  */
+#define DOMAIN_MAXLEN       256     /* maximum domain name length */
+#define ADDR_MAXLEN         256     /* maximum mail address length */
+#define CMD_MAXLEN          (LINE_MAXLEN-8) /* maximum length of command */
+#define RPLY_MAXLEN         (LINE_MAXLEN-7) /* maximum length of reply */
 
 /** Errors -- function fails to complete action **/
 #define NULLPTR     -1      /* NULL pointer dereference */
 #define RCVERROR    -2      /* receipt error */
 #define BADARG      -3      /* bad function arguments */
 #define SENDERROR   -4      /* sending error */
+#define BADDOMAIN   -5      /* cannot get correct local domain name */
+#define BADADDR     -6      /* bad mail address */
 
 /** Warnings -- function ended well, but receipt was invalid for SMTP **/
 #define RCV_BADPARAM    1   /* received command with bad parameter */
@@ -102,7 +105,7 @@ struct smtp_command {
 /** SMTP Reply **/
 struct smtp_reply {
     uint16_t code;              /* reply code (see SMTP Replies) */
-    char msg[LINE_MAXLEN-4];    /* message sent in reply */
+    char msg[RPLY_MAXLEN];      /* message sent in reply */
 };
 
 /** ESMTP Extensions **/

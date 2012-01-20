@@ -200,7 +200,7 @@ int smtp_recv_mail (int sockfd, struct mail_object *mail, char *filename,
         }
 
         /* receiving command */
-        if (0 != smtp_recv_command(sockfd, &cmd)) {
+        if (0 > smtp_recv_command(sockfd, &cmd)) {
             close(sockfd);
             return ERECVERR;
         }
@@ -548,7 +548,8 @@ static ssize_t smtp_recv_mail_data (int sockfd, char **buf_ptr,
     }
 
     *buf_ptr = buf;
-    *buf_size = buflen;
+    if (NULL != buf_size)
+        *buf_size = buflen;
 
     return n;
 }
