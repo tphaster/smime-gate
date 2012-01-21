@@ -74,11 +74,6 @@ void smime_gate_service (int sockfd)
     filename = NULL;
     mail = NULL;
 
-#ifdef DEBUG
-    for (i = 0; i < no_mails; ++i)
-        print_mail_object(mails[i]);
-#endif
-
     if (0 == no_mails)
         return;     /* no mails to process */
 
@@ -131,7 +126,7 @@ char *generate_filename (unsigned int nr)
 /* smime_process_mails - process mail objects, according to rules in config */
 int smime_process_mails (struct mail_object **mails, char **fns, int no_mails)
 {
-    int m, toprcs;
+    int m, toprcs, sign_encr, ret;
     unsigned int r;
     char cmd[CMDMAXLEN];
 
@@ -139,6 +134,7 @@ int smime_process_mails (struct mail_object **mails, char **fns, int no_mails)
 
         /** signing rules **/
         toprcs = 0;
+        sign_encr = 0;
         for (r = 0; r < conf.sign_rules_size; ++r) {
             if (NULL != conf.sign_rules[r].sndr) {
                 if (strcasestr(mails[m]->mail_from, conf.sign_rules[r].sndr)) {
@@ -152,18 +148,20 @@ int smime_process_mails (struct mail_object **mails, char **fns, int no_mails)
             snprintf(cmd, CMDMAXLEN,
                 "smime-tool -sign -cert %s -key %s -pass %s %s > %s.prcs",
                 conf.sign_rules[r].cert_path, conf.sign_rules[r].key_path,
-                conf.sign_rules[r].key_path, fns[m], fns[m]);
+                conf.sign_rules[r].key_pass, fns[m], fns[m]);
 
-            if (0 == system(cmd)) {
-                snprintf(cmd, CMDMAXLEN, "%s.prcs", fns[m]);
-                if (-1 == rename(cmd, fns[m]))
-                    remove(cmd);
-                else {
+            ret = system(cmd);
+            snprintf(cmd, CMDMAXLEN, "%s.prcs", fns[m]);
+
+            if (0 == ret) {
+                if (0 == rename(cmd, fns[m])) {
                     free_mail_object(mails[m]);
                     load_mail_from_file(fns[m], mails[m]);
+                    sign_encr = 1;
                     /* signing successful */
                 }
             }
+            remove(cmd);
         }
         /** end of signing rules **/
 
@@ -190,18 +188,19 @@ int smime_process_mails (struct mail_object **mails, char **fns, int no_mails)
 
             if (0 == system(cmd)) {
                 snprintf(cmd, CMDMAXLEN, "%s.prcs", fns[m]);
-                if (-1 == rename(cmd, fns[m]))
-                    remove(cmd);
-                else {
+                if (0 == rename(cmd, fns[m])) {
                     free_mail_object(mails[m]);
                     load_mail_from_file(fns[m], mails[m]);
+                    sign_encr = 1;
                     /* encryption successful */
                 }
+                remove(cmd);
             }
         }
-        else
-            continue;
         /** end of encryption rules **/
+
+        if (sign_encr)  /* there is no sense in decrypting/verifying mails, */
+            continue;   /* which has just been encrypted/signed.            */
 
         /** decryption rules **/
         toprcs = 0;
@@ -227,13 +226,12 @@ int smime_process_mails (struct mail_object **mails, char **fns, int no_mails)
 
             if (0 == system(cmd)) {
                 snprintf(cmd, CMDMAXLEN, "%s.prcs", fns[m]);
-                if (-1 == rename(cmd, fns[m]))
-                    remove(cmd);
-                else {
+                if (0 == rename(cmd, fns[m])) {
                     free_mail_object(mails[m]);
                     load_mail_from_file(fns[m], mails[m]);
                     /* decryption successful */
                 }
+                remove(cmd);
             }
         }
         /** end of decryption rules **/
@@ -257,13 +255,12 @@ int smime_process_mails (struct mail_object **mails, char **fns, int no_mails)
 
             if (0 == system(cmd)) {
                 snprintf(cmd, CMDMAXLEN, "%s.prcs", fns[m]);
-                if (-1 == rename(cmd, fns[m]))
-                    remove(cmd);
-                else {
+                if (0 == rename(cmd, fns[m])) {
                     free_mail_object(mails[m]);
                     load_mail_from_file(fns[m], mails[m]);
                     /* verification successful */
                 }
+                remove(cmd);
             }
         }
         /** end of verification rules **/

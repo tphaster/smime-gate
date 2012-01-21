@@ -137,13 +137,18 @@ fi
 # prepare input file
 MSG=`readable "$1" "message"`
 
+# set output stream
+if [ "$OUTPUT" ]; then
+    exec 1>"$OUTPUT"
+fi
+
 # extract MIME message
 (
     while read line
     do
         case $line in
             MIME-Version:*)
-                echo -e -n "$line\n" > "$MSG.tmp"
+                echo -n "$line" > "$MSG.tmp"
                 break;;
             *) 
                 echo -e -n "$line\n";;
@@ -152,9 +157,11 @@ MSG=`readable "$1" "message"`
 
     while read line
     do
-        echo -e -n "$line\n" >> "$MSG.tmp"
+        echo -n "$line" >> "$MSG.tmp"
     done
 ) < $MSG
+
+sed -i 's/\r/\n/g' "$MSG.tmp"
 
 # check whether there are enough parameters
 CERT=`readable "$CERT" "certificate"`
@@ -173,11 +180,6 @@ case $ACTION in
         ;;
 esac
 
-# set output stream
-if [ "$OUTPUT" ]; then
-    exec 1>"$OUTPUT"
-fi
-
 # process message
 case $ACTION in
     e)      # encryption
@@ -193,7 +195,7 @@ case $ACTION in
         openssl smime -verify -in $MSG.tmp -recip $CERT -CAfile $CA 2>/dev/null
         echo -e -n "\r\n=== Verification successful ===\r\n"
         ;;
-esac
+esac | sed 's/$/\r/' | sed 's/\r\r/\r/'
 
 rm -f "$MSG.tmp"
 
