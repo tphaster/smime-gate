@@ -44,6 +44,9 @@ void smime_gate_service (int sockfd)
         mails[no_mails] = mail;
         fns[no_mails] = filename;
         ++no_mails;
+#ifdef DEBUG
+        err_msg("received mail, saved in %s", filename);
+#endif
 
         if (NULL == (filename = generate_filename(no_mails))) {
             srv = SMTP_SRV_ERR;
@@ -66,6 +69,15 @@ void smime_gate_service (int sockfd)
         else
             srv = SMTP_SRV_NXT;
     }
+    free(filename);
+    free(mail);
+    filename = NULL;
+    mail = NULL;
+
+#ifdef DEBUG
+    for (i = 0; i < no_mails; ++i)
+        print_mail_object(mails[i]);
+#endif
 
     if (0 == no_mails)
         return;     /* no mails to process */
@@ -75,14 +87,28 @@ void smime_gate_service (int sockfd)
     /* forward all received mail objects */
     srvfd = Socket(AF_INET, SOCK_STREAM, 0);
     Connect(srvfd, (SA *) &(conf.mail_srv), sizeof(conf.mail_srv));
-    srv = SMTP_SRV_NEW;
+    if (1 == no_mails)
+        srv = SMTP_CLI_NEW | SMTP_CLI_LST;
+    else
+        srv = SMTP_CLI_NEW | SMTP_CLI_CON;
 
     for (i = 0; i < no_mails; ++i) {
-        if (0 == smtp_send_mail(srvfd, mails[i], srv))
+        if (0 == smtp_send_mail(srvfd, mails[i], srv)) {
             remove(fns[i]);
+            free_mail_object(mails[i]);
+            free(mails[i]);
+            free(fns[i]);
+        }
 
-        srv = SMTP_SRV_NXT;
+        if (no_mails-2 == i)
+            srv = SMTP_CLI_NXT | SMTP_CLI_LST;
+        else
+            srv = SMTP_CLI_NXT | SMTP_CLI_CON;
     }
+
+    free(mails);
+    free(fns);
+    free_config();
 }
 
 /* generate_filename - generate unique filename for mail, returns allocated *

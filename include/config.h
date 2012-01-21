@@ -93,6 +93,7 @@ extern struct config conf;  /* global configuration */
 void parse_args (int argc, char **argv);
 void load_config (void);
 void print_config (void);
+void free_config (void);
 
 #endif  /* __CONFIG_H */
 

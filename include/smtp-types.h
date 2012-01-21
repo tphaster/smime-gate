@@ -19,6 +19,7 @@ struct mail_object {
 };
 
 void free_mail_object (struct mail_object *mail);
+void print_mail_object (struct mail_object *mail);
 
 #endif  /* __MAIL_TYPES_H */
 

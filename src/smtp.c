@@ -154,7 +154,7 @@ int smtp_send_mail (int sockfd, struct mail_object *mail, int cli)
 int smtp_recv_mail (int sockfd, struct mail_object *mail, char *filename,
                     int srv)
 {
-    int ret;
+    int ret, cmd_ret;
     unsigned int i;
     char **temp_rcpt;
     struct smtp_command cmd;
@@ -200,7 +200,7 @@ int smtp_recv_mail (int sockfd, struct mail_object *mail, char *filename,
         }
 
         /* receiving command */
-        if (0 > smtp_recv_command(sockfd, &cmd)) {
+        if (0 > (cmd_ret = smtp_recv_command(sockfd, &cmd))) {
             close(sockfd);
             return ERECVERR;
         }
@@ -209,7 +209,13 @@ int smtp_recv_mail (int sockfd, struct mail_object *mail, char *filename,
             case SMTP_CLEAR:    /* new SMTP session */
                 if (EHLO == cmd.code || HELO == cmd.code)
                 {
-                    state = SMTP_EHLO;  /* EHLO/HELO received */
+                    if (0 != cmd_ret) {
+                        /* unable to accommodate parameters */
+                        ret = smtp_send_reply(sockfd, R455, NULL, 0);
+                        break;
+                    }
+
+                    state = SMTP_EHLO;              /* EHLO/HELO received */
                     ret = smtp_send_reply(sockfd, R250, NULL, 0);   /* OK */
                 }
                 else if (MAIL == cmd.code || RCPT == cmd.code ||
@@ -242,15 +248,21 @@ int smtp_recv_mail (int sockfd, struct mail_object *mail, char *filename,
                     ret = smtp_send_reply(sockfd, R503, NULL, 0);
                 }
                 else if (MAIL == cmd.code) {
-                    /* TODO: verify mail address correctness */
+                    if (0 != cmd_ret) {
+                        /* unable to accommodate parameters */
+                        ret = smtp_send_reply(sockfd, R455, NULL, 0);
+                        break;
+                    }
+
                     if (NULL == (mail->mail_from = malloc(strlen(cmd.data)+1)))
+                    {
                         /* insufficient system storage */
                         ret = smtp_send_reply(sockfd, R452, NULL, 0);
-                    else {
-                        state = SMTP_MAIL;  /* MAIL received */
-                        strcpy(mail->mail_from, cmd.data);
-                        ret = smtp_send_reply(sockfd, R250, NULL, 0);  /* OK */
+                        break;
                     }
+                    state = SMTP_MAIL;                  /* MAIL received */
+                    strcpy(mail->mail_from, cmd.data);
+                    ret = smtp_send_reply(sockfd, R250, NULL, 0);  /* OK */
                 }
                 else if (QUIT == cmd.code) {
                     smtp_send_reply(sockfd, R221, NULL, 0);
@@ -277,25 +289,30 @@ int smtp_recv_mail (int sockfd, struct mail_object *mail, char *filename,
                     ret = smtp_send_reply(sockfd, R503, NULL, 0);
                 }
                 else if (RCPT == cmd.code) {
-                    /* TODO: verify mail address correctness */
+                    if (0 != cmd_ret) {
+                        /* unable to accommodate parameters */
+                        ret = smtp_send_reply(sockfd, R455, NULL, 0);
+                        break;
+                    }
+
                     if (NULL == (mail->rcpt_to = malloc(sizeof(char *)))) {
                         /* insufficient system storage */
                         ret = smtp_send_reply(sockfd, R452, NULL, 0);
+                        break;
                     }
-                    else if (NULL ==
-                             (mail->rcpt_to[0] = malloc(strlen(cmd.data)+1)))
+                    if (NULL ==
+                        (mail->rcpt_to[0] = malloc(strlen(cmd.data)+1)))
                     {
                         free(mail->rcpt_to);
                         mail->rcpt_to = NULL;
                         /* insufficient system storage */
                         ret = smtp_send_reply(sockfd, R452, NULL, 0);
+                        break;
                     }
-                    else {
-                        state = SMTP_RCPT;  /* RCPT received */
-                        strcpy(mail->rcpt_to[0], cmd.data);
-                        mail->no_rcpt = 1;
-                        ret = smtp_send_reply(sockfd, R250, NULL, 0);  /* OK */
-                    }
+                    state = SMTP_RCPT;                  /* RCPT received */
+                    strcpy(mail->rcpt_to[0], cmd.data);
+                    mail->no_rcpt = 1;
+                    ret = smtp_send_reply(sockfd, R250, NULL, 0);  /* OK */
                 }
                 else if (QUIT == cmd.code) {
                     smtp_send_reply(sockfd, R221, NULL, 0);
@@ -326,7 +343,11 @@ int smtp_recv_mail (int sockfd, struct mail_object *mail, char *filename,
                     ret = smtp_send_reply(sockfd, R503, NULL, 0);
                 }
                 else if (RCPT == cmd.code) {
-                    /* TODO: verify mail address correctness */
+                    if (0 != cmd_ret) {
+                        /* unable to accommodate parameters */
+                        ret = smtp_send_reply(sockfd, R455, NULL, 0);
+                        break;
+                    }
                     /* next recipient */
                     temp_rcpt = mail->rcpt_to;
                     mail->rcpt_to = malloc((mail->no_rcpt+1) * sizeof(char *));
@@ -334,26 +355,24 @@ int smtp_recv_mail (int sockfd, struct mail_object *mail, char *filename,
                         mail->rcpt_to = temp_rcpt;
                         /* insufficient system storage */
                         ret = smtp_send_reply(sockfd, R452, NULL, 0);
+                        break;
                     }
-                    else {
-                        for (i = 0; i < mail->no_rcpt; ++i)
-                            mail->rcpt_to[i] = temp_rcpt[i];
-                        free(temp_rcpt);
-                        temp_rcpt = NULL;
 
-                        mail->rcpt_to[mail->no_rcpt] =
-                                malloc(strlen(cmd.data)+1);
-                        if (NULL == mail->rcpt_to[mail->no_rcpt]) {
-                            /* insufficient system storage */
-                            ret = smtp_send_reply(sockfd, R452, NULL, 0);
-                        }
-                        else {
-                            strcpy(mail->rcpt_to[mail->no_rcpt], cmd.data);
-                            mail->no_rcpt += 1;
-                            /* OK */
-                            ret = smtp_send_reply(sockfd, R250, NULL, 0);
-                        }
+                    for (i = 0; i < mail->no_rcpt; ++i)
+                        mail->rcpt_to[i] = temp_rcpt[i];
+                    free(temp_rcpt);
+                    temp_rcpt = NULL;
+
+                    mail->rcpt_to[mail->no_rcpt] = malloc(strlen(cmd.data)+1);
+                    if (NULL == mail->rcpt_to[mail->no_rcpt]) {
+                        /* insufficient system storage */
+                        ret = smtp_send_reply(sockfd, R452, NULL, 0);
+                        break;
                     }
+                    strcpy(mail->rcpt_to[mail->no_rcpt], cmd.data);
+                    mail->no_rcpt += 1;
+
+                    ret = smtp_send_reply(sockfd, R250, NULL, 0);   /* OK */
                 }
                 else if (DATA == cmd.code) {
                     state = SMTP_DATA;  /* DATA received */
@@ -416,7 +435,7 @@ int smtp_recv_mail (int sockfd, struct mail_object *mail, char *filename,
 
         if (0 != ret) {
             free_mail_object(mail);
-
+            close(sockfd);
             return ESENDERR;
         }
     }
@@ -482,7 +501,8 @@ static ssize_t smtp_recv_mail_data (int sockfd, char **buf_ptr,
 
             if (D4_LF == state) {
                 if (c == '\n') {    /* end of mail */
-                    n -= 3;     /* ".CRLF" isn't a part of mail */
+                    n -= 2;     /* ".CRLF" isn't a part of mail */
+                    *(ptr-3) = '\0';
                     break;
                 }
                 else if (c == '\r')

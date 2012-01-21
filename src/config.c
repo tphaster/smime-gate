@@ -796,3 +796,64 @@ void print_config (void)
     printf("\n");
 }
 
+void free_config (void)
+{
+    size_t i;
+
+    if (NULL != conf.prog_name)
+        free(conf.prog_name);
+    if (NULL != conf.version)
+        free(conf.version);
+    if (NULL != conf.config_file)
+        free(conf.config_file);
+    if (NULL != conf.rules_file)
+        free(conf.rules_file);
+
+    for (i = 0; i < conf.encr_rules_size; ++i) {
+        if (NULL != conf.encr_rules[i].rcpt)
+            free(conf.encr_rules[i].rcpt);
+        if (NULL != conf.encr_rules[i].cert_path)
+            free(conf.encr_rules[i].cert_path);
+    }
+
+    for (i = 0; i < conf.sign_rules_size; ++i) {
+        if (NULL != conf.sign_rules[i].sndr)
+            free(conf.sign_rules[i].sndr);
+        if (NULL != conf.sign_rules[i].cert_path)
+            free(conf.sign_rules[i].cert_path);
+        if (NULL != conf.sign_rules[i].key_path)
+            free(conf.sign_rules[i].key_path);
+        if (NULL != conf.sign_rules[i].key_pass)
+            free(conf.sign_rules[i].key_pass);
+    }
+
+    for (i = 0; i < conf.decr_rules_size; ++i) {
+        if (NULL != conf.decr_rules[i].rcpt)
+            free(conf.decr_rules[i].rcpt);
+        if (NULL != conf.decr_rules[i].cert_path)
+            free(conf.decr_rules[i].cert_path);
+        if (NULL != conf.decr_rules[i].key_path)
+            free(conf.decr_rules[i].key_path);
+        if (NULL != conf.decr_rules[i].key_pass)
+            free(conf.decr_rules[i].key_pass);
+    }
+
+    for (i = 0; i < conf.vrfy_rules_size; ++i) {
+        if (NULL != conf.vrfy_rules[i].sndr)
+            free(conf.vrfy_rules[i].sndr);
+        if (NULL != conf.vrfy_rules[i].cert_path)
+            free(conf.vrfy_rules[i].cert_path);
+        if (NULL != conf.vrfy_rules[i].cacert_path)
+            free(conf.vrfy_rules[i].cacert_path);
+    }
+
+    if (NULL != conf.encr_rules)
+        free(conf.encr_rules);
+    if (NULL != conf.sign_rules)
+        free(conf.sign_rules);
+    if (NULL != conf.decr_rules)
+        free(conf.decr_rules);
+    if (NULL != conf.vrfy_rules)
+        free(conf.vrfy_rules);
+}
+

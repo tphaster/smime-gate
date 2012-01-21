@@ -5,6 +5,7 @@
  */
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include "smtp-types.h"
 
@@ -31,5 +32,22 @@ void free_mail_object (struct mail_object *mail)
         free(mail->data);
 
     memset(mail, 0, sizeof(struct mail_object));
+}
+
+/* print_mail_object - print mail object's data to stderr */
+void print_mail_object (struct mail_object *mail)
+{
+    unsigned int i;
+
+    fprintf(stderr, "=== MAIL OBJECT ===\n");
+
+    /* mail's SMTP envelope */
+    fprintf(stderr, "FROM: %s\n", mail->mail_from);
+    for (i = 0; i < mail->no_rcpt; ++i)
+        fprintf(stderr, "TO:   %s\n", mail->rcpt_to[i]);
+
+    /* mail's SMTP content */
+    fprintf(stderr, "\nDATA (size: %d octets)\n%s=== END OF MAIL ===\n",
+            mail->data_size, mail->data);
 }
 

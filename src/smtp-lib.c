@@ -518,14 +518,14 @@ int smtp_recv_command (int sockfd, struct smtp_command *cmd)
     }
     else if (0 == strncasecmp("MAIL FROM:", line, 10)) {
         cmd->code = MAIL;
-        if (len < 15)
+        if (len < 15 || '<' != line[10] || '>' != line[len-1])
             return RCV_BADPARAM;    /* bad parameter */
         strncpy(cmd->data, line+11, ADDR_MAXLEN);
         cmd->data[strlen(cmd->data)-1] = '\0';
     }
     else if (0 == strncasecmp("RCPT TO:", line, 8)) {
         cmd->code = RCPT;
-        if (len < 13)
+        if (len < 13 || '<' != line[8] || '>' != line[len-1])
             return RCV_BADPARAM;    /* bad parameter */
         strncpy(cmd->data, line+9, ADDR_MAXLEN);
         cmd->data[strlen(cmd->data)-1] = '\0';
