@@ -14,7 +14,7 @@
 
 /*** Constants ***/
 
-#define VERSION         "0.1"   /* release version */
+#define VERSION         "1.0alpha"  /* release version */
 
 /* Defaults */
 #define DEFAULT_CONFIG_FILE     "/etc/smtp-gate/config"
