@@ -167,7 +167,7 @@ sed -i 's/\r/\n/g' "$MSG.tmp"
 CERT=`readable "$CERT" "certificate"`
 
 case $ACTION in
-    [ds])      # decrypt/signing: key pass
+    [ds])      # decrypt/signing: key, pass
         KEY=`readable "$KEY" "private key"`
         if [ "x$PASS" = "x" ]; then
             echo "`basename $0`: missing password for private key" 1<&2
@@ -179,6 +179,8 @@ case $ACTION in
         CA=`readable "$CA" "CA certificate"`
         ;;
 esac
+
+set +e
 
 # process message
 case $ACTION in
@@ -193,9 +195,15 @@ case $ACTION in
         ;;
     v)      # verify
         openssl smime -verify -in $MSG.tmp -recip $CERT -CAfile $CA 2>/dev/null
-        echo -e -n "\r\n=== Verification successful ===\r\n"
+        echo -e -n "\n=== Verification successful ===\n"
         ;;
 esac | sed 's/$/\r/' | sed 's/\r\r/\r/'
 
+status=${PIPESTATUS[0]}
+
 rm -f "$MSG.tmp"
+
+if [ $status -ne 0 ]; then
+    exit 1
+fi
 

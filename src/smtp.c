@@ -617,8 +617,8 @@ int load_mail_from_file (const char *filename, struct mail_object *mail)
         return EUEXEOF; /* error or EOF */
     }
 
-    len = strlen(buf)-1;
-    buf[len] = '\0';
+    len = strlen(buf);
+    buf[len-1] = '\0';
     if (NULL == (mail->mail_from = malloc(len))) {
         fclose(fp);
         return ENOMEM;
@@ -646,8 +646,8 @@ int load_mail_from_file (const char *filename, struct mail_object *mail)
             return EUEXEOF; /* error or EOF */
         }
 
-        len = strlen(buf)-1;
-        buf[len] = '\0';
+        len = strlen(buf);
+        buf[len-1] = '\0';
         if (NULL == (mail->rcpt_to[i] = malloc(len))) {
             fclose(fp);
             free_mail_object(mail);
@@ -662,13 +662,15 @@ int load_mail_from_file (const char *filename, struct mail_object *mail)
     mail->data_size = ftell(fp)-pos;
     fseek(fp, pos, SEEK_SET);
 
-    if (NULL == (mail->data = malloc(mail->data_size))) {
+    if (NULL == (mail->data = malloc(mail->data_size+1))) {
         fclose(fp);
         free_mail_object(mail);
         return ENOMEM;
     }
     fread(mail->data, sizeof(char), mail->data_size, fp);
+    mail->data[mail->data_size] = '\0';
 
+    fclose(fp);
     return 0;
 }
 

@@ -520,15 +520,15 @@ int smtp_recv_command (int sockfd, struct smtp_command *cmd)
         cmd->code = MAIL;
         if (len < 15 || '<' != line[10] || '>' != line[len-1])
             return RCV_BADPARAM;    /* bad parameter */
+        line[len-1] = '\0';
         strncpy(cmd->data, line+11, ADDR_MAXLEN);
-        cmd->data[strlen(cmd->data)-1] = '\0';
     }
     else if (0 == strncasecmp("RCPT TO:", line, 8)) {
         cmd->code = RCPT;
         if (len < 13 || '<' != line[8] || '>' != line[len-1])
             return RCV_BADPARAM;    /* bad parameter */
+        line[len-1] = '\0';
         strncpy(cmd->data, line+9, ADDR_MAXLEN);
-        cmd->data[strlen(cmd->data)-1] = '\0';
     }
     else if (4 == len && 0 == strncasecmp("DATA", line, 4))
         cmd->code = DATA;

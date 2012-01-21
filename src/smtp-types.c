@@ -39,6 +39,9 @@ void print_mail_object (struct mail_object *mail)
 {
     unsigned int i;
 
+    if (NULL == mail)
+        return;
+
     fprintf(stderr, "=== MAIL OBJECT ===\n");
 
     /* mail's SMTP envelope */

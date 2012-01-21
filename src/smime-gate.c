@@ -171,7 +171,7 @@ int smime_process_mails (struct mail_object **mails, char **fns, int no_mails)
             if (NULL != conf.encr_rules[r].rcpt) {
                 /* when there is only one recipient, encryption makes sense */
                 if (1 == mails[m]->no_rcpt) {
-                    if (strcasestr(mails[m]->rcpt_to[1],
+                    if (strcasestr(mails[m]->rcpt_to[0],
                                 conf.encr_rules[r].rcpt))
                     {
                         toprcs = 1;
@@ -186,16 +186,18 @@ int smime_process_mails (struct mail_object **mails, char **fns, int no_mails)
                     "smime-tool -encrypt -cert %s %s > %s.prcs",
                     conf.encr_rules[r].cert_path, fns[m], fns[m]);
 
-            if (0 == system(cmd)) {
-                snprintf(cmd, CMDMAXLEN, "%s.prcs", fns[m]);
+            ret = system(cmd);
+            snprintf(cmd, CMDMAXLEN, "%s.prcs", fns[m]);
+
+            if (0 == ret) {
                 if (0 == rename(cmd, fns[m])) {
                     free_mail_object(mails[m]);
                     load_mail_from_file(fns[m], mails[m]);
                     sign_encr = 1;
                     /* encryption successful */
                 }
-                remove(cmd);
             }
+            remove(cmd);
         }
         /** end of encryption rules **/
 
@@ -208,7 +210,7 @@ int smime_process_mails (struct mail_object **mails, char **fns, int no_mails)
             if (NULL != conf.decr_rules[r].rcpt) {
                 /* when there is only one recipient, decryption makes sense */
                 if (1 == mails[m]->no_rcpt) {
-                    if (strcasestr(mails[m]->rcpt_to[1],
+                    if (strcasestr(mails[m]->rcpt_to[0],
                                 conf.decr_rules[r].rcpt))
                     {
                         toprcs = 1;
@@ -222,17 +224,18 @@ int smime_process_mails (struct mail_object **mails, char **fns, int no_mails)
             snprintf(cmd, CMDMAXLEN,
                 "smime-tool -decrypt -cert %s -key %s -pass %s %s > %s.prcs",
                 conf.decr_rules[r].cert_path, conf.decr_rules[r].key_path,
-                conf.decr_rules[r].key_path, fns[m], fns[m]);
+                conf.decr_rules[r].key_pass, fns[m], fns[m]);
 
-            if (0 == system(cmd)) {
-                snprintf(cmd, CMDMAXLEN, "%s.prcs", fns[m]);
+            ret = system(cmd);
+            snprintf(cmd, CMDMAXLEN, "%s.prcs", fns[m]);
+            if (0 == ret) {
                 if (0 == rename(cmd, fns[m])) {
                     free_mail_object(mails[m]);
                     load_mail_from_file(fns[m], mails[m]);
                     /* decryption successful */
                 }
-                remove(cmd);
             }
+            remove(cmd);
         }
         /** end of decryption rules **/
 
@@ -253,15 +256,17 @@ int smime_process_mails (struct mail_object **mails, char **fns, int no_mails)
                 conf.vrfy_rules[r].cert_path, conf.vrfy_rules[r].cacert_path,
                 fns[m], fns[m]);
 
-            if (0 == system(cmd)) {
-                snprintf(cmd, CMDMAXLEN, "%s.prcs", fns[m]);
+            ret = system(cmd);
+            snprintf(cmd, CMDMAXLEN, "%s.prcs", fns[m]);
+
+            if (0 == ret) {
                 if (0 == rename(cmd, fns[m])) {
                     free_mail_object(mails[m]);
                     load_mail_from_file(fns[m], mails[m]);
                     /* verification successful */
                 }
-                remove(cmd);
             }
+            remove(cmd);
         }
         /** end of verification rules **/
     }
