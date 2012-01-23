@@ -142,6 +142,9 @@ if [ "$OUTPUT" ]; then
     exec 1>"$OUTPUT"
 fi
 
+# delete temporary file on exit
+trap "rm -f $MSG.tmp" EXIT INT TERM
+
 # extract MIME message
 (
     while read line
@@ -201,7 +204,7 @@ esac | sed 's/$/\r/' | sed 's/\r\r/\r/'
 
 status=${PIPESTATUS[0]}
 
-rm -f "$MSG.tmp"
+
 
 if [ $status -ne 0 ]; then
     exit 1
