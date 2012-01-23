@@ -157,6 +157,8 @@ void parse_args (int argc, char **argv)
 
                     arg = *++argv;
                     len = strlen(arg)+1;
+                    if (NULL != conf.config_file)
+                        free(conf.config_file);
                     conf.config_file = Malloc(len);
                     strncpy(conf.config_file, arg, len);
                     break;
@@ -171,6 +173,8 @@ void parse_args (int argc, char **argv)
 
                     arg = *++argv;
                     len = strlen(arg)+1;
+                    if (NULL != conf.rules_file)
+                        free(conf.rules_file);
                     conf.rules_file = Malloc(len);
                     strncpy(conf.rules_file, arg, len);
                     break;
@@ -200,8 +204,6 @@ void parse_args (int argc, char **argv)
         len = strlen(DEFAULT_CONFIG_FILE)+1;
         conf.config_file = Malloc(len);
         strncpy(conf.config_file, DEFAULT_CONFIG_FILE, len);
-        fprintf(stderr, "Using default configuration file '%s'.\n",
-                conf.config_file);
     }
     /* check if set config file is readable */
     if (0 != access(conf.config_file, R_OK)) {
@@ -211,14 +213,8 @@ void parse_args (int argc, char **argv)
         exit(1);
     }
 
-    /* load default rules file, if none was set */
-    if (NULL == conf.rules_file) {
-        len = strlen(DEFAULT_RULES_FILE)+1;
-        conf.rules_file = Malloc(len);
-        strncpy(conf.rules_file, DEFAULT_RULES_FILE, len);
-    }
-    /* check if set rules file is readable */
-    else if (0 != access(conf.rules_file, R_OK)) {
+    /* check if set rules file is readable (i it was set) */
+    else if (NULL != conf.rules_file && 0 != access(conf.rules_file, R_OK)) {
         fprintf(stderr, "Can't read %s file (given in 'rules' option).\n",
                 conf.rules_file);
         usage();
@@ -278,7 +274,7 @@ void load_config (void)
         /* rules file location */
         else if (0 == strncmp("rules = ", buf, 8)) {
             if (NULL != conf.rules_file)
-                free(conf.rules_file);
+                continue;
 
             len = strlen(buf+8)+1;
             conf.rules_file = Malloc(len);
@@ -321,6 +317,13 @@ void load_config (void)
     }
     if (0 == conf.smtp_port) {
         conf.smtp_port = htons(DEFAULT_SMTP_PORT);
+        fprintf(stderr, "Loaded default SMTP port as none was set.\n");
+    }
+    /* load default rules file, if none was set */
+    if (NULL == conf.rules_file) {
+        len = strlen(DEFAULT_RULES_FILE)+1;
+        conf.rules_file = Malloc(len);
+        strncpy(conf.rules_file, DEFAULT_RULES_FILE, len);
         fprintf(stderr, "Loaded default SMTP port as none was set.\n");
     }
 
