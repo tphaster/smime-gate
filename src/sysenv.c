@@ -10,12 +10,12 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
 #include "system.h"
 
 #define MAXFD   64
 
 extern int daemon_proc;
+
 
 void daemonize (const char *pname, int facility)
 {

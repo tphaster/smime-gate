@@ -10,7 +10,9 @@
 #include <stdint.h>
 #include <sys/types.h>
 
-/*** SMTP Commands ***/
+/*** SMTP Constants ***/
+
+/** SMTP Commands **/
 #define EHLO    1       /* Extended HELLO */
 #define HELO    2       /* HELLO */
 #define MAIL    3       /* MAIL */
@@ -21,12 +23,12 @@
 #define NOOP    8       /* NOOP */
 #define QUIT    9       /* QUIT */
 
-/** Retrieving recipient number from RCPT command **/
+/* Retrieving recipient number from RCPT command */
 #define RCPT_N(x)   (4+((x)<<4))        /* make RCPT command for 'x' rcpt */
 #define GET_CMD(x)  ((x) & 0xF)         /* cut rcpt number, pure command */
 #define GET_RNO(x)  (((x) & ~0xF)>>4)   /* get rcpt number from command */
 
-/*** SMTP Replies ***/
+/** SMTP Replies **/
 #define R220     1  /* (on connection start) greeting */
 #define R221     2  /* (after QUIT) closing connection */
 #define R250     3  /* requested mail action okay, completed */
@@ -49,7 +51,7 @@
 #define R554    20  /* transaction failed */
 #define R555    21  /* MAIL FROM/RCPT TO parameters not recognized or not implemented */
 
-/*** ESMTP Extensions ***/
+/** ESMTP Extensions **/
 #define NO_EXT  10  /* number of extensions */
 
 #define _8BITMIME    0
@@ -63,7 +65,7 @@
 #define VERB         8
 #define SIZE         9
 
-/*** SMTP Server States ***/
+/** SMTP Server States **/
 #define SMTP_ERR   -1       /* server is dysfunctional */
 #define SMTP_CLEAR  0       /* clear */
 #define SMTP_EHLO   1       /* after EHLO/HELO receipt */
@@ -71,15 +73,14 @@
 #define SMTP_RCPT   3       /* after (at last one) RCPT receipt */
 #define SMTP_DATA   4       /* receiving mail data */
 
-
-/*** Constants ***/
+/** Other constants **/
 #define LINE_MAXLEN         512     /* maximum SMTP line length  */
 #define DOMAIN_MAXLEN       256     /* maximum domain name length */
 #define ADDR_MAXLEN         256     /* maximum mail address length */
 #define CMD_MAXLEN          (LINE_MAXLEN-8) /* maximum length of command */
 #define RPLY_MAXLEN         (LINE_MAXLEN-7) /* maximum length of reply */
 
-/** Errors -- function fails to complete action **/
+/** Errors -- when function fails to complete action **/
 #define NULLPTR     -1      /* NULL pointer dereference */
 #define RCVERROR    -2      /* receipt error */
 #define BADARG      -3      /* bad function arguments */
@@ -87,7 +88,7 @@
 #define BADDOMAIN   -5      /* cannot get correct local domain name */
 #define BADADDR     -6      /* bad mail address */
 
-/** Warnings -- function ended well, but receipt was invalid for SMTP **/
+/** Warnings -- when function ended well, but receipt was invalid for SMTP **/
 #define RCV_BADPARAM    1   /* received command with bad parameter */
 #define RCV_NKNOWNCMD   2   /* received unknown command */
 #define RCV_NKNOWNRPLY  3   /* received unknown reply */
@@ -96,23 +97,24 @@
 /*** Typedefs ***/
 #include "smtp-types.h"
 
-/** SMTP Command **/
+/* SMTP Command */
 struct smtp_command {
     uint16_t code;          /* command code (see SMTP Commands) */
     char data[CMD_MAXLEN];  /* additional data */
 };
 
-/** SMTP Reply **/
+/* SMTP Reply */
 struct smtp_reply {
     uint16_t code;              /* reply code (see SMTP Replies) */
     char msg[RPLY_MAXLEN];      /* message sent in reply */
 };
 
-/** ESMTP Extensions **/
+/* ESMTP Extensions */
 struct esmtp_ext {
     uint8_t ext[NO_EXT];    /* table for extensions, ex. esmtp_ext.ext[EXPN]
                              * (see ESMTP Extensions)*/
 };
+
 
 /*** Functions ***/
 int smtp_send_command (int sockfd, size_t cmd, struct mail_object *mail);

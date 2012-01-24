@@ -1,3 +1,8 @@
+/**
+ * File:        src/main.c
+ * Description: S/MIME Gate main function.
+ * Author:      Tomasz Pieczerak (tphaster)
+ */
 
 #include <errno.h>
 #include <string.h>
@@ -7,10 +12,10 @@
 #include "system.h"
 #include "smime-gate.h"
 
-/*** Global Variables***/
+/** Global Variables **/
 struct config conf;     /* global configuration */
 
-/* main - smtp-gate main function */
+/* S/MIME Gate main function */
 int main (int argc, char **argv)
 {
     int listenfd, connfd;
@@ -60,7 +65,7 @@ int main (int argc, char **argv)
 
         if ( (childpid = Fork()) == 0) {    /* child process */
             Close(listenfd);            /* close listening socket */
-            smime_gate_service(connfd);    /* process the request */
+            smime_gate_service(connfd); /* process the request */
             exit(0);
         }
         Close(connfd);  /* parent closes connected socket */

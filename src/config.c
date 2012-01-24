@@ -18,7 +18,6 @@
 #include "config.h"
 #include "system.h"
 
-
 /* version - print program version and some other information */
 static void version (void)
 {
@@ -799,6 +798,7 @@ void print_config (void)
     printf("\n");
 }
 
+/* free_config - free global configuration structure */
 void free_config (void)
 {
     size_t i;

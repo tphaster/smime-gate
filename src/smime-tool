@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# S/MIME Tool
+# S/MIME Tool 1.0, simple tool for processing S/MIME messages
 # Author: Tomasz Pieczerak (tphaster)
 
 set -e
@@ -42,7 +42,7 @@ fi
 # display help on "-h" or "--help" option (it must be the first option)
 if [ "x$1" = "x--help" -o "x$1" = "x-h" ]; then
     cat <<EOT
-S/MIME Tool 1.0, simple tool for processing S/MIME messages
+S/MIME Tool 1.0, simple tool for processing S/MIME messages (uses OpenSSL)
 Usage: `basename $0` [ACTION] [OPTION]... [MSG]
 
 MSG is a file containing MIME message, it's mandatory. You can set encryption
@@ -200,13 +200,10 @@ case $ACTION in
         openssl smime -verify -in $MSG.tmp -recip $CERT -CAfile $CA 2>/dev/null
         echo -e -n "\n=== Verification successful ===\n"
         ;;
-esac | sed 's/$/\r/' | sed 's/\r\r/\r/'
+esac | sed -e 's/$/\r/' -e 's/\r\r/\r/'
 
-status=${PIPESTATUS[0]}
+status=${PIPESTATUS[0]}     # get openssl exit status
 
-
-
-if [ $status -ne 0 ]; then
-    exit 1
-fi
+# return appropriate exit status on openssl error
+exit $status
 

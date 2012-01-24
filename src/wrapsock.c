@@ -10,7 +10,6 @@
 #include <sys/types.h>
 #include <sys/select.h>
 #include <sys/socket.h>
-
 #include "system.h"
 
 void Bind (int fd, const struct sockaddr *sa, socklen_t salen)

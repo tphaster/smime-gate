@@ -1,14 +1,14 @@
 /**
  * File:         src/signal.c
  * Description:  Signal wrapper functions.
- * Author:       Tomasz Pieczerak (tphaster) (based on W. Richard Stevens code)
+ * Author:       Tomasz Pieczerak (tphaster)
+ *               (based on W. Richard Stevens "UNIX Network Programming")
  */
 
 #include <signal.h>
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-
 #include "system.h"
 
 Sigfunc *signal (int signo, Sigfunc *func)

@@ -2,6 +2,7 @@
  * File:        src/rwwrap.c
  * Description: Read/write from file descriptor wrapper functions.
  * Author:      Tomasz Pieczerak (tphaster)
+ *              (based on W. Richard Stevens "UNIX Network Programming")
  */
 
 #include <errno.h>

@@ -19,7 +19,8 @@
 #define MAILBUF     10  /* mail buffer size */
 #define CMDMAXLEN  512  /* command maximum lenght */
 
-char *generate_filename (unsigned int nr);
+/** Local functions **/
+static char *generate_filename (unsigned int nr);
 int smime_process_mails (struct mail_object **mails, char **fns, int no_mails);
 char *strcasestr(const char *haystack, const char *needle);
 
@@ -64,7 +65,6 @@ void smime_gate_service (int sockfd)
         }
 
         if (MAILBUF == no_mails)
-            /* TODO: extending mail buffer */
             srv = SMTP_SRV_ERR;
         else
             srv = SMTP_SRV_NXT;
@@ -108,7 +108,7 @@ void smime_gate_service (int sockfd)
 
 /* generate_filename - generate unique filename for mail, returns allocated *
  *                     pointer (behaves like malloc())                      */
-char *generate_filename (unsigned int nr)
+static char *generate_filename (unsigned int nr)
 {
     char *fn = malloc(FNMAXLEN);
     unsigned int t, p;

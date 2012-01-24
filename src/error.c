@@ -1,7 +1,8 @@
 /**
  * File:         src/error.c
  * Description:  Error reporting functions.
- * Author:       Tomasz Pieczerak (tphaster) (based on W. Richard Stevens code)
+ * Author:       Tomasz Pieczerak (tphaster)
+ *               (based on W. Richard Stevens "UNIX Network Programming")
  */
 
 #include <errno.h>
@@ -10,7 +11,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
-
 #include "system.h"
 
 int daemon_proc;    /* set nonzero by daemonize() */

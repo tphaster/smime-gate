@@ -12,10 +12,10 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 
-/* Typedefs */
+/** Typedefs **/
 typedef void    Sigfunc(int);   /* for signal handlers */
 
-/* Useful macros */
+/** Macros **/
 #define min(a,b)    ((a) < (b) ? (a) : (b))
 #define max(a,b)    ((a) > (b) ? (a) : (b))
 
@@ -26,11 +26,14 @@ typedef void    Sigfunc(int);   /* for signal handlers */
 
 #define SA      struct sockaddr
 
-/* Miscellaneous constants */
-#define MAXLINE         4096    /* max text line length */
-#define MAXSOCKADDR      128    /* max socket address structure size */
+/** Constants **/
+#define MAXLINE         4096    /* maximum text line length */
+#define MAXSOCKADDR      128    /* maximum socket address structure size */
 #define BUFFSIZE        8192    /* buffer size for reads and writes */
 #define LISTENQ         1024    /* default value of backlog in listen() */
+
+
+/** Functions **/
 
 /* Error reporting functions */
 void err_ret (const char *fmt, ...);

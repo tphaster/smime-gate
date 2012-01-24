@@ -11,12 +11,10 @@
 #include <stdint.h>
 #include <netinet/in.h>
 
+/** Constants **/
 
-/*** Constants ***/
+#define VERSION         "1.0beta"   /* release version */
 
-#define VERSION         "1.0alpha"  /* release version */
-
-/* Defaults */
 #define DEFAULT_CONFIG_FILE     "/etc/smtp-gate/config"
 #define DEFAULT_RULES_FILE      "/etc/smtp-gate/rules"
 #define DEFAULT_WORKING_DIR     "/tmp/smtp-gate"
@@ -24,14 +22,8 @@
 
 #define CONF_MAXLEN     256     /* maximum line length of config/rules files */
 
-/* Mail actions */
-#define ACTION_NONE         0   /* no action */
-#define ACTION_SIGN         1   /* sign mail object */
-#define ACTION_ENCRYPT      2   /* encrypt mail object */
-#define ACTION_BOTH         3   /* encrypt and sign mail object */
 
-
-/*** Type Definitions ***/
+/** Typedefs **/
 
 /* struct config - holds program configuration */
 struct config {
@@ -85,11 +77,11 @@ struct vrfy_rule {
 };
 
 
-/*** Externs ***/
+/** Externs **/
 extern struct config conf;  /* global configuration */
 
 
-/*** Function prototypes ***/
+/** Functions **/
 void parse_args (int argc, char **argv);
 void load_config (void);
 void print_config (void);
