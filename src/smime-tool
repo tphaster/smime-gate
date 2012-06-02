@@ -127,7 +127,7 @@ do
     esac
 done
 
-# check whether there is any argument left (it must be)
+# check whether there is any argument left (there have to be)
 if [ "x$1" = "x" ]; then
     echo "`basename $0`: missing MSG" 1<&2
     usage

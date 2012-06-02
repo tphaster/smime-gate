@@ -15,9 +15,10 @@
 
 #define VERSION         "1.0beta"   /* release version */
 
-#define DEFAULT_CONFIG_FILE     "/etc/smtp-gate/config"
-#define DEFAULT_RULES_FILE      "/etc/smtp-gate/rules"
-#define DEFAULT_WORKING_DIR     "/tmp/smtp-gate"
+#define DEFAULT_CONFIG_FILE     "/etc/smime-gate/config"
+#define DEFAULT_RULES_FILE      "/etc/smime-gate/rules"
+#define DEFAULT_WORKING_DIR     "/var/run/smime-gate"
+#define DEFAULT_UNSENT_DIR      "/var/run/smime-gate/unsent"
 #define DEFAULT_SMTP_PORT       587
 
 #define CONF_MAXLEN     256     /* maximum line length of config/rules files */

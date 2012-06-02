@@ -10,6 +10,9 @@
 #include <unistd.h>
 #include <time.h>
 #include <sys/types.h>
+#define _GNU_SOURCE
+#include <libgen.h>
+
 #include "config.h"
 #include "smtp.h"
 #include "system.h"
@@ -34,6 +37,7 @@ void smime_gate_service (int sockfd)
     int no_mails = 0;
     char **fns = Calloc(MAILBUF, sizeof(char *));
     char *filename;
+    char *unsent = Malloc(FNMAXLEN);
     struct mail_object **mails = Calloc(MAILBUF, sizeof(struct mail_object *));
     struct mail_object *mail = Malloc(sizeof(struct mail_object));
 
@@ -75,7 +79,7 @@ void smime_gate_service (int sockfd)
     mail = NULL;
 
     if (0 == no_mails)
-        return;     /* no mails to process */
+        goto end_service;   /* no mails to process */
 
     smime_process_mails(mails, fns, no_mails);
 
@@ -88,12 +92,16 @@ void smime_gate_service (int sockfd)
         srv = SMTP_CLI_NEW | SMTP_CLI_CON;
 
     for (i = 0; i < no_mails; ++i) {
-        if (0 == smtp_send_mail(srvfd, mails[i], srv)) {
+        if (0 == smtp_send_mail(srvfd, mails[i], srv))
             remove(fns[i]);
-            free_mail_object(mails[i]);
-            free(mails[i]);
-            free(fns[i]);
+        else {  /* mail cannot be sent now, move it to unsent directory */
+            snprintf(unsent, FNMAXLEN, DEFAULT_UNSENT_DIR "/%s", basename(fns[i]));
+            rename(fns[i], unsent);
         }
+
+        free_mail_object(mails[i]);
+        free(mails[i]);
+        free(fns[i]);
 
         if (no_mails-2 == i)
             srv = SMTP_CLI_NXT | SMTP_CLI_LST;
@@ -101,6 +109,8 @@ void smime_gate_service (int sockfd)
             srv = SMTP_CLI_NXT | SMTP_CLI_CON;
     }
 
+end_service:
+    free(unsent);
     free(mails);
     free(fns);
     free_config();

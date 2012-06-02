@@ -221,9 +221,16 @@ void parse_args (int argc, char **argv)
     }
 
     /* create working directory */
-    if (0 != mkdir(DEFAULT_WORKING_DIR, 0755) && EEXIST != errno) {
+    if (0 != mkdir(DEFAULT_WORKING_DIR, 0700) && EEXIST != errno) {
         fprintf(stderr, "Can't create working directory '%s'.\n",
                 DEFAULT_WORKING_DIR);
+        exit(1);
+    }
+
+    /* create unsent directory */
+    if (0 != mkdir(DEFAULT_UNSENT_DIR, 0700) && EEXIST != errno) {
+        fprintf(stderr, "Can't create unsent directory '%s'.\n",
+                DEFAULT_UNSENT_DIR);
         exit(1);
     }
 }
