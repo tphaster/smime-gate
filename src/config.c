@@ -21,7 +21,7 @@
 /* version - print program version and some other information */
 static void version (void)
 {
-    printf("S/MIME Gateway %s\n", conf.version);
+    printf("S/MIME Gateway %s\n\n", conf.version);
 
     printf("Copyright (C) 2011-2012 Tomasz Pieczerak\n"
            "License GPLv3+: GNU GPL version 3 or later\n"
@@ -80,6 +80,12 @@ void parse_args (int argc, char **argv)
     len = strlen(VERSION)+1;
     conf.version = Malloc(len);
     strncpy(conf.version, VERSION, len);
+
+    /* check whether 'smime-tool' is available in PATH */
+    if (system("smime-tool --version 1>/dev/null 2>&1")) {
+        fprintf(stderr, "There is no 'smime-tool' available in PATH.\n");
+        exit(1);
+    }
 
     /* parse command-line arguments */
     while (--argc > 0 && (*++argv)[0] == '-') {

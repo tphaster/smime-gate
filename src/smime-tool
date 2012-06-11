@@ -4,6 +4,7 @@
 # Author: Tomasz Pieczerak (tphaster)
 
 set -e
+VERSION="1.0"
 
 # display usage info function
 usage(){
@@ -42,7 +43,7 @@ fi
 # display help on "-h" or "--help" option (it must be the first option)
 if [ "x$1" = "x--help" -o "x$1" = "x-h" ]; then
     cat <<EOT
-S/MIME Tool 1.0, simple tool for processing S/MIME messages (uses OpenSSL)
+S/MIME Tool $VERSION, simple tool for processing S/MIME messages (uses OpenSSL)
 Usage: `basename $0` [ACTION] [OPTION]... [MSG]
 
 MSG is a file containing MIME message, it's mandatory. You can set encryption
@@ -66,6 +67,23 @@ Options:
     -out -      print output to stdout. [default]
 
 Mail bug reports and suggestions to <tphaster AT gmail.com>.
+EOT
+    exit 0
+fi
+
+# print program version on "-V" or "--version" option
+if [ "x$1" = "x--version" -o "x$1" = "x-V" ]; then
+    cat <<EOT
+S/MIME Tool $VERSION
+
+Copyright (C) 2011-2012 Tomasz Pieczerak
+License GPLv3+: GNU GPL version 3 or later
+<http://www.gnu.org/licenses/gpl.html>.
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+
+Written and maintained by Tomasz Pieczerak <tphaste AT gmail.com>.
+Please send bug reports and questions to <tphaster AT gmail.com>.
 EOT
     exit 0
 fi
@@ -188,16 +206,16 @@ set +e
 # process message
 case $ACTION in
     e)      # encryption
-        openssl smime -encrypt $ALG -in $MSG.tmp $CERT 2>/dev/null
+        openssl smime -encrypt $ALG -in $MSG.tmp $CERT 2>/dev/null || exit 1
         ;;
     d)      # decryption
-        openssl smime -decrypt -inkey $KEY -recip $CERT -passin pass:$PASS -in $MSG.tmp 2>/dev/null
+        openssl smime -decrypt -inkey $KEY -recip $CERT -passin pass:$PASS -in $MSG.tmp 2>/dev/null || exit 1
         ;;
     s)      # signing
-        openssl smime -sign -signer $CERT -inkey $KEY -passin pass:$PASS -in $MSG.tmp 2>/dev/null
+        openssl smime -sign -signer $CERT -inkey $KEY -passin pass:$PASS -in $MSG.tmp 2>/dev/null || exit 1
         ;;
     v)      # verify
-        openssl smime -verify -in $MSG.tmp -recip $CERT -CAfile $CA 2>/dev/null
+        openssl smime -verify -in $MSG.tmp -recip $CERT -CAfile $CA 2>/dev/null || exit 1
         echo -e -n "\n=== Verification successful ===\n"
         ;;
 esac | sed -e 's/$/\r/' -e 's/\r\r/\r/'

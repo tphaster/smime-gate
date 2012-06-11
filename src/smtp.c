@@ -15,8 +15,8 @@
 
 #define MAIL_START_LEN  512     /* default mail block size */
 
-static ssize_t smtp_recv_mail_data (int sockfd, char **buf_ptr,
-                                    size_t *buf_size);
+ssize_t smtp_recv_mail_data (int sockfd, char **buf_ptr, size_t *buf_size);
+
 
 /* smtp_send_mail - send a mail object through connected socket */
 int smtp_send_mail (int sockfd, struct mail_object *mail, int cli)
@@ -480,8 +480,7 @@ again:
 #define D3_CR       3       /* dot received, looking for CR */
 #define D4_LF       4       /* second CR received, looking for LF */
 
-static ssize_t smtp_recv_mail_data (int sockfd, char **buf_ptr,
-                                    size_t *buf_size)
+ssize_t smtp_recv_mail_data (int sockfd, char **buf_ptr, size_t *buf_size)
 {
     int rc, state;
     size_t n, buflen;
