@@ -2,7 +2,8 @@
  * File:         src/sysenv.c
  * Description:  Various system-dependent functions needed for
  *               proper execution in the Unix-like environment.
- * Author:       Tomasz Pieczerak (tphaster) (based on Richard W. Stevens code)
+ * Author:       Tomasz Pieczerak (tphaster)
+ *               (based on W. Richard Stevens "UNIX Network Programming")
  */
 
 #include <stdlib.h>

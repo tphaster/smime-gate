@@ -23,16 +23,20 @@ smime-gate: $(OBJECTS)
 $(SRC)/%.o: $(SRC)/%.c Makefile
 	$(CC) -c -I$(INCLUDE) $(CFLAGS) $< -o $@
 
+test: smime-gate
+	cd ./testing; $(MAKE) all
+
 include Makefile.dep
 
 dep:
 	makedepend -f- -Yinclude -- $(CFLAGS) -- src/*.c \
 	    2>/dev/null > Makefile.dep
 
-clean :
-	    rm -f $(OBJECTS)
+clean:
+	rm -f $(OBJECTS)
+	cd ./testing; $(MAKE) clean
 
-.PHONY : all clean dep
+.PHONY: all clean dep test
 
 #############################################################
 

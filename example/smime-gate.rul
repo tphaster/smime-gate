@@ -1,0 +1,22 @@
+# S/MIME Gate rules file
+
+# Encryption rules
+# ENCR user@far.com /path/to/user_cert.pem
+
+ENCR encrypt@example.org /etc/smime-gate/cert/cert_en.pem
+
+# Signing rules
+# SIGN user@home.com /path/to/user_cert.pem /path/to/user_key.pem keypassword
+
+SIGN sign@example.org /etc/smime-gate/cert/cert_sg.pem /etc/smime-gate/cert/key_sg.pem qwerty
+
+# Decryption rules
+# DECR user@home.com /path/to/user_cert.pem /path/to/user_key.pem keypassword
+
+DECR decrypt@example.org /etc/smime-gate/cert/cert_de.pem /etc/smime-gate/cert/key_de.pem qwerty
+
+# Verification rules
+# VRFY user@far.com /path/to/user_cert.pem /path/to/ca_cert.pem
+
+VRFY verify@example.org /etc/smime-gate/cert/cert_vf.pem /etc/smime-gate/cert/cacert.pem
+

@@ -1,7 +1,8 @@
 /**
  * File:         src/wrapunix.c
  * Description:  Standard Unix calls wrapper functions.
- * Author:       Tomasz Pieczerak (tphaster) (based on W. Richard Stevens code)
+ * Author:       Tomasz Pieczerak (tphaster)
+ *               (based on W. Richard Stevens "UNIX Network Programming")
  */
 
 #include <errno.h>

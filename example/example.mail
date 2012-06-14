@@ -1,0 +1,48 @@
+sender@example.org
+2
+recipient1@example.org
+recipient2@example.org
+From: Sender <sender@example.org>
+Message-Id: <200908251906.k7GKfq6v011871@tree.slackware.lan>
+Date: Tue, 25 Aug 2009 19:06:38 -0500
+To: Rcpt1 <recipient1@example.org>, Rcpt2 <recipient2@example.org>
+Subject: Register with the Linux counter project
+User-Agent: nail 11.25 7/29/05
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+
+
+(Adapted from a question in the Linux-FAQ)
+
+How Many People Use Linux?
+
+Linux is freely available, and no one is required to register with
+any central authority, so it is difficult to know.  Several businesses
+survive solely on selling and supporting Linux.  Linux newsgroups are
+some of the most heavily read on Usenet.  Accurate numbers are hard to
+come by, but the number is almost certainly in the millions.
+
+However, people can register as Linux users at the Linux Counter
+project, which has been in existence since 1993.  In August of 2009
+the project counted more than 142,000 users, but that is certainly
+only a small fraction of all users.  The operator of the Linux Counter
+estimated 29 million users at that time.
+
+To get counted, visit the Web site at:
+
+http://counter.li.org
+
+...and fill in the registration form.
+
+If you don't want to use the Web, send E-mail to
+linux-counter@uninett.no with a subject line containing the word
+"Linux", such as:
+
+I use Linux at home
+I use Linux at work
+I use Linux at school
+
+The current count is posted monthly to news:comp.os.linux.misc, and
+is always available from the Web site.
+

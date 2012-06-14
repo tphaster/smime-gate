@@ -1,0 +1,22 @@
+# DO NOT DELETE
+
+smtp-test-1/client.o: ../include/system.h ../include/smtp.h
+smtp-test-1/client.o: ../include/smtp-types.h ../include/smtp-lib.h
+smtp-test-1/server.o: ../include/system.h ../include/smtp-lib.h
+smtp-test-1/server.o: ../include/smtp-types.h
+smtp-test-2/client.o: ../include/system.h ../include/smtp.h
+smtp-test-2/client.o: ../include/smtp-types.h ../include/smtp-lib.h
+smtp-test-2/server.o: ../include/system.h ../include/smtp-lib.h
+smtp-test-2/server.o: ../include/smtp-types.h
+smtp-test-3/client.o: ../include/system.h ../include/smtp.h
+smtp-test-3/client.o: ../include/smtp-types.h ../include/smtp-lib.h
+smtp-test-3/server.o: ../include/system.h ../include/smtp-lib.h
+smtp-test-3/server.o: ../include/smtp-types.h
+smtp-test-4/client.o: ../include/system.h ../include/smtp.h
+smtp-test-4/client.o: ../include/smtp-types.h ../include/smtp-lib.h
+smtp-test-4/server.o: ../include/system.h ../include/smtp-lib.h
+smtp-test-4/server.o: ../include/smtp-types.h ../include/smtp.h
+smime-gate-test/client.o: ../include/system.h ../include/smtp.h
+smime-gate-test/client.o: ../include/smtp-types.h ../include/smtp-lib.h
+smime-gate-test/server.o: ../include/system.h ../include/smtp.h
+smime-gate-test/server.o: ../include/smtp-types.h

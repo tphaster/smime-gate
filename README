@@ -1,3 +1,13 @@
-smime-gate's main objective is to be an open source solution for automated
+S/MIME Gate's main objective is to be an open source solution for automated
 signing/encrypting mail objects using S/MIME standard. It is written in C with
 standard libraries, so it should work on every Unix-like system.
+
+Project's directory tree
+
+smime-gate/
+    |-- include/    -> header files
+    |-- src/        -> source files
+    |-- testing/    -> testing programs sources
+    |-- example/    -> example configuration and mail storage files
+    `-- README      -> this readme file
+
