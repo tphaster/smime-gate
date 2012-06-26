@@ -74,7 +74,7 @@ int main (int argc, char **argv)
             ++sproc_counter;
         }
         else
-            err_msg("subprocesses limit exceeded, connection refused\n");
+            err_msg("subprocesses limit exceeded, connection refused");
 
         Close(connfd);  /* parent closes connected socket */
     }

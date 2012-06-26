@@ -32,6 +32,10 @@ typedef void    Sigfunc(int);   /* for signal handlers */
 #define BUFFSIZE        8192    /* buffer size for reads and writes */
 #define LISTENQ         1024    /* default value of backlog in listen() */
 #define MAXSUBPROC       200    /* maximum number of forked subprocesses */
+#define FNMAXLEN          48    /* filename maximum length */
+#define MAILBUF           10    /* mail buffer size */
+#define CMDMAXLEN        512    /* command maximum lenght */
+
 
 /** Externs **/
 extern int sproc_counter;       /* forked subprocesses counter */

@@ -4,11 +4,14 @@
  * Author:      Tomasz Pieczerak (tphaster)
  */
 
+#include <dirent.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include "config.h"
 #include "smtp-lib.h"
 #include "smtp.h"
 #include "system.h"
@@ -670,6 +673,83 @@ int load_mail_from_file (const char *filename, struct mail_object *mail)
     mail->data[mail->data_size] = '\0';
 
     fclose(fp);
+    return 0;
+}
+
+static int mail_file_filter (const struct dirent *en) {
+    struct stat buf;
+
+    stat(en->d_name, &buf);
+
+    /* mails are stored in regular files */
+    if (S_ISREG(buf.st_mode))
+        return 1;
+    else
+        return 0;
+}
+
+/* send_mails_from_dir - send all mail stored in given directory */
+int send_mails_from_dir (const char *dirname)
+{
+    int n;
+    struct stat buf;
+    struct dirent **eps;
+    struct mail_object mail;
+
+    if (stat(dirname, &buf) == -1) {
+        err_ret("cannot stat directory");
+        return -1;
+    }
+
+    if (!S_ISDIR(buf.st_mode)) {
+        err_msg("%s is not a directory", dirname);
+        return -1;
+    }
+
+    n = scandir(dirname, &eps, mail_file_filter, alphasort);
+
+    if (n < 0) {
+        err_ret("cannot open directory");
+        return -1;
+    }
+    else if (0 == n) {
+        err_msg("no files in directory");
+        return 0;
+    }
+    else {
+        int cnt, srv, srvfd;
+        char *fpath = Malloc(FNMAXLEN);
+
+        srvfd = Socket(AF_INET, SOCK_STREAM, 0);
+        Connect(srvfd, (SA *) &(conf.mail_srv), sizeof(conf.mail_srv));
+        if (1 == n)
+            srv = SMTP_CLI_NEW | SMTP_CLI_LST;
+        else
+            srv = SMTP_CLI_NEW | SMTP_CLI_CON;
+
+        for (cnt = 0; cnt < n; ++cnt) {
+            snprintf(fpath, FNMAXLEN, "%s/%s", dirname, eps[cnt]->d_name);
+
+            if (load_mail_from_file(fpath, &mail)) {
+                err_sys("cannot load mail");
+                continue;
+            }
+
+            if (0 == smtp_send_mail(srvfd, &mail, srv))
+                remove(fpath);
+            else {
+                /* mail still cannot be sent, leave it */;
+            }
+
+            free_mail_object(&mail);
+
+            if (n-2 == cnt)
+                srv = SMTP_CLI_NXT | SMTP_CLI_LST;
+            else
+                srv = SMTP_CLI_NXT | SMTP_CLI_CON;
+        }
+    }
+
     return 0;
 }
 

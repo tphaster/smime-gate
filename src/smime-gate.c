@@ -17,11 +17,6 @@
 #include "smtp.h"
 #include "system.h"
 
-/** Constants **/
-#define FNMAXLEN    48  /* filename maximum length */
-#define MAILBUF     10  /* mail buffer size */
-#define CMDMAXLEN  512  /* command maximum lenght */
-
 /** Local functions **/
 static char *generate_filename (unsigned int nr);
 int smime_process_mails (struct mail_object **mails, char **fns, int no_mails);
