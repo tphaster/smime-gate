@@ -31,6 +31,10 @@ typedef void    Sigfunc(int);   /* for signal handlers */
 #define MAXSOCKADDR      128    /* maximum socket address structure size */
 #define BUFFSIZE        8192    /* buffer size for reads and writes */
 #define LISTENQ         1024    /* default value of backlog in listen() */
+#define MAXSUBPROC       200    /* maximum number of forked subprocesses */
+
+/** Externs **/
+extern int sproc_counter;       /* forked subprocesses counter */
 
 
 /** Functions **/

@@ -14,6 +14,7 @@
 
 /** Global Variables **/
 struct config conf;     /* global configuration */
+int sproc_counter = 0;  /* forked subprocesses counter */
 
 /* S/MIME Gate main function */
 int main (int argc, char **argv)
@@ -63,11 +64,18 @@ int main (int argc, char **argv)
                 err_sys("accept error");
         }
 
-        if ( (childpid = Fork()) == 0) {    /* child process */
-            Close(listenfd);            /* close listening socket */
-            smime_gate_service(connfd); /* process the request */
-            exit(0);
+        /* check whether subprocesses limit is not exceeded  */
+        if (sproc_counter < MAXSUBPROC) {
+            if ( (childpid = Fork()) == 0) {    /* child process */
+                Close(listenfd);                /* close listening socket */
+                smime_gate_service(connfd);     /* process the request */
+                exit(0);
+            }
+            ++sproc_counter;
         }
+        else
+            err_msg("subprocesses limit exceeded, connection refused\n");
+
         Close(connfd);  /* parent closes connected socket */
     }
 }   /* end of main() */
