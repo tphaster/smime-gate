@@ -34,7 +34,8 @@ typedef void    Sigfunc(int);   /* for signal handlers */
 #define MAXSUBPROC       200    /* maximum number of forked subprocesses */
 #define FNMAXLEN          48    /* filename maximum length */
 #define MAILBUF           10    /* mail buffer size */
-#define CMDMAXLEN        512    /* command maximum lenght */
+#define CMDMAXLEN        512    /* command maximum length */
+#define UNSENT_SLEEP     900    /* (sec) how often try to resend unsent mails */
 
 
 /** Externs **/

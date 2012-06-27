@@ -20,7 +20,7 @@ int sproc_counter = 0;  /* forked subprocesses counter */
 int main (int argc, char **argv)
 {
     int listenfd, connfd;
-    pid_t childpid;
+    pid_t childpid, unsentpid;
     socklen_t clilen;
     struct sockaddr_in cliaddr, servaddr;
     void sig_chld(int);
@@ -53,6 +53,12 @@ int main (int argc, char **argv)
 
     /* set appropriate handler for SIGCHLD */
     Signal(SIGCHLD, sig_chld);
+
+    /* start unsent service */
+    if ( (unsentpid = Fork()) == 0) {
+        unsent_service();
+        exit(0);
+    }
 
     /* SMTP Server's main loop */
     for (;;) {

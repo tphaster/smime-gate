@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <sys/types.h>
+#include <sys/prctl.h>
 #define _GNU_SOURCE
 #include <libgen.h>
 
@@ -277,5 +278,16 @@ int smime_process_mails (struct mail_object **mails, char **fns, int no_mails)
     }
 
     return 0;
+}
+
+void unsent_service (void)
+{
+    prctl(PR_SET_PDEATHSIG, SIGTERM);
+
+    for (;;) {
+        sleep(UNSENT_SLEEP);
+        if (-1 == send_mails_from_dir(DEFAULT_UNSENT_DIR))
+            err_sys("failed to open unsent directory");
+    }
 }
 

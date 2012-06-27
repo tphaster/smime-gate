@@ -8,6 +8,8 @@
 #define __SMIME_GATE_H
 
 void smime_gate_service (int sockfd);
+void unsent_service (void);
+
 
 #endif  /* __SMIME_GATE_H */
 
