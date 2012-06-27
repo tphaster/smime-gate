@@ -3,7 +3,7 @@
 ## Macros ###################################################
 
 SMIME_CLI = smime-gate-test/client.o \
-	../src/wrapunix.o ../src/wrapsock.o ../src/signal.o \
+	../src/wrapunix.o ../src/wrapsock.o \
 	../src/smtp-lib.o ../src/rwwrap.o ../src/error.o \
 	../src/smtp.o ../src/smtp-types.o
 SMIME_SRV = smime-gate-test/server.o \
@@ -28,7 +28,8 @@ SMTP_2_SRV = smtp-test-2/server.o \
 
 SMTP_3_CLI = smtp-test-3/client.o \
 	../src/wrapsock.o ../src/smtp-lib.o ../src/rwwrap.o \
-	../src/error.o ../src/smtp.o ../src/smtp-types.o
+	../src/error.o ../src/smtp.o ../src/smtp-types.o \
+	../src/wrapunix.o
 SMTP_3_SRV = smtp-test-3/server.o \
 	../src/wrapunix.o ../src/wrapsock.o ../src/smtp-lib.o \
        	../src/rwwrap.o ../src/error.o ../src/smtp.o \

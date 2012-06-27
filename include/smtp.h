@@ -40,7 +40,7 @@ int smtp_recv_mail (int sockfd, struct mail_object *mail, char *filename,
 int smtp_send_mail (int sockfd, struct mail_object *mail, int cli);
 int save_mail_to_file (struct mail_object *mail, const char *filename);
 int load_mail_from_file (const char *filename, struct mail_object *mail);
-int send_mails_from_dir (const char *dirname);
+int send_mails_from_dir (const char *dirname, struct sockaddr_in *srv_sock);
 
 #endif  /* __SMTP_H */
 

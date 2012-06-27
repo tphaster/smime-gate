@@ -286,7 +286,7 @@ void unsent_service (void)
 
     for (;;) {
         sleep(UNSENT_SLEEP);
-        if (-1 == send_mails_from_dir(DEFAULT_UNSENT_DIR))
+        if (-1 == send_mails_from_dir(DEFAULT_UNSENT_DIR, &(conf.mail_srv)) )
             err_sys("failed to open unsent directory");
     }
 }

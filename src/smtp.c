@@ -689,9 +689,9 @@ static int mail_file_filter (const struct dirent *en) {
 }
 
 /* send_mails_from_dir - send all mail stored in given directory */
-int send_mails_from_dir (const char *dirname)
+int send_mails_from_dir (const char *dirname, struct sockaddr_in *srv_sock)
 {
-    int n;
+    int n, ret = 0;
     struct stat buf;
     struct dirent **eps;
     struct mail_object mail;
@@ -712,16 +712,14 @@ int send_mails_from_dir (const char *dirname)
         err_ret("cannot open directory");
         return -1;
     }
-    else if (0 == n) {
-        err_msg("no files in directory");
-        return 0;
-    }
+    else if (0 == n)
+        return 0;   /* no mails in directory */
     else {
         int cnt, srv, srvfd;
         char *fpath = Malloc(FNMAXLEN);
 
         srvfd = Socket(AF_INET, SOCK_STREAM, 0);
-        Connect(srvfd, (SA *) &(conf.mail_srv), sizeof(conf.mail_srv));
+        Connect(srvfd, (SA *) srv_sock, sizeof(*srv_sock));
         if (1 == n)
             srv = SMTP_CLI_NEW | SMTP_CLI_LST;
         else
@@ -735,8 +733,10 @@ int send_mails_from_dir (const char *dirname)
                 continue;
             }
 
-            if (0 == smtp_send_mail(srvfd, &mail, srv))
+            if (0 == smtp_send_mail(srvfd, &mail, srv)) {
                 remove(fpath);
+                ++ret;
+            }
             else {
                 /* mail still cannot be sent, leave it */;
             }
@@ -750,6 +750,6 @@ int send_mails_from_dir (const char *dirname)
         }
     }
 
-    return 0;
+    return ret;  /* return number of sent mails */
 }
 
