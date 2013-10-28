@@ -17,6 +17,9 @@ SRC = src
 
 all: smime-gate
 
+debug: CFLAGS += -DDEBUG
+debug: all
+
 smime-gate: $(OBJECTS)
 	$(CC) $^ -o $@
 
@@ -29,7 +32,8 @@ test: smime-gate
 include Makefile.dep
 
 dep:
-	makedepend -f- -Yinclude -- $(CFLAGS) -- src/*.c \
+	@echo Generating dependencies...
+	@makedepend -f- -Yinclude -- $(CFLAGS) -- src/*.c \
 	    2>/dev/null > Makefile.dep
 
 clean:

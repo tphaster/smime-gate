@@ -11,6 +11,9 @@
 #include <signal.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#ifdef DEBUG
+#include <stdio.h>
+#endif
 
 /** Typedefs **/
 typedef void    Sigfunc(int);   /* for signal handlers */

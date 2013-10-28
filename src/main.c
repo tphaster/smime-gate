@@ -76,7 +76,7 @@ int main (int argc, char **argv)
         clilen = sizeof(cliaddr);
         if ( (connfd = accept(listenfd, (SA *) &cliaddr, &clilen)) < 0) {
 #ifdef DEBUG
-            printf("accept() call returned non-zero status: %d\n" errno);
+            printf("accept() call returned non-zero status: %d\n", errno);
 #endif
             if (errno == EINTR)
                 continue;   /* back to for() */
