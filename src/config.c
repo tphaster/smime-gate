@@ -218,7 +218,7 @@ void parse_args (int argc, char **argv)
         exit(1);
     }
 
-    /* check if set rules file is readable (i it was set) */
+    /* check if set rules file is readable (if it was set) */
     else if (NULL != conf.rules_file && 0 != access(conf.rules_file, R_OK)) {
         fprintf(stderr, "Can't read %s file (given in 'rules' option).\n",
                 conf.rules_file);

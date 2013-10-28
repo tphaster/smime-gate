@@ -1,0 +1,11 @@
+~*
+*.o
+*.swp
+
+smime-gate
+server
+client
+
+testing/smime-gate-test/*
+testing/smtp-check
+

@@ -20,3 +20,5 @@ smime-gate-test/client.o: ../include/system.h ../include/smtp.h
 smime-gate-test/client.o: ../include/smtp-types.h ../include/smtp-lib.h
 smime-gate-test/server.o: ../include/system.h ../include/smtp.h
 smime-gate-test/server.o: ../include/smtp-types.h
+smime-gate-benchmark/server.o: ../include/system.h ../include/smtp.h
+smime-gate-benchmark/server.o: ../include/smtp-types.h

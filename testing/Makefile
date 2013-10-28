@@ -11,6 +11,11 @@ SMIME_SRV = smime-gate-test/server.o \
 	../src/smtp-lib.o ../src/rwwrap.o ../src/error.o \
 	../src/smtp.o ../src/smtp-types.o
 
+SMTP_BSRV = smtp-benchmark/server.o \
+	../src/wrapunix.o ../src/wrapsock.o ../src/signal.o \
+	../src/smtp-lib.o ../src/rwwrap.o ../src/error.o \
+	../src/smtp.o ../src/smtp-types.o
+
 SMTP_1_CLI = smtp-test-1/client.o \
 	../src/wrapsock.o ../src/smtp-lib.o ../src/rwwrap.o \
 	../src/error.o
@@ -49,11 +54,15 @@ INCLUDE = ../include
 
 ## Targets ##################################################
 
-all: smime-gate-test smtp-test-1 smtp-test-2 smtp-test-3 smtp-test-4
+all: smime-gate-test smtp-benchmark smtp-test-1 smtp-test-2 \
+	smtp-test-3 smtp-test-4
 
 smime-gate-test: $(SMIME_CLI) $(SMIME_SRV)
 	$(CC) $(SMIME_CLI) -o smime-gate-test/client
 	$(CC) $(SMIME_SRV) -o smime-gate-test/server
+
+smtp-benchmark: $(SMTP_BSRV)
+	$(CC) $(SMTP_BSRV) -o smtp-benchmark/server
 
 smtp-test-1: $(SMTP_1_CLI) $(SMTP_1_SRV)
 	$(CC) $(SMTP_1_CLI) -o smtp-test-1/client
@@ -75,6 +84,9 @@ smtp-test-4: $(SMTP_4_CLI) $(SMTP_4_SRV)
 smime-gate-test/%.o: smime-gate-test/%.c Makefile
 	$(CC) -c -I$(INCLUDE) $(CFLAGS) $< -o $@
 
+smtp-benchmark/%.o: smtp-benchmark/%.c Makefile
+	$(CC) -c -I$(INCLUDE) $(CFLAGS) $< -o $@
+
 smtp-test-1/%.o: smtp-test-1/%.c Makefile
 	$(CC) -c -I$(INCLUDE) $(CFLAGS) $< -o $@
 
@@ -93,10 +105,12 @@ include Makefile.dep
 dep:
 	makedepend -f- -Y../include -- $(CFLAGS) -- \
 	    smtp-test-{1,2,3,4}/*.c smime-gate-test/*.c \
+	    smtp-benchmark/*.c \
 	    2>/dev/null > Makefile.dep
 
 clean:
 	rm -f smime-gate-test/*.o
+	rm -f smtp-benchmark/*.o
 	rm -f smtp-test-{1,2,3,4}/*.o
 	rm -f smime-gate-test/{server,client}
 	rm -f smtp-test-{1,2,3,4}/{server,client}

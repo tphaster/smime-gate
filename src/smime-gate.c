@@ -299,6 +299,10 @@ void unsent_service (void)
     for (;;) {
         if (-1 == send_mails_from_dir(DEFAULT_UNSENT_DIR, &(conf.mail_srv)) )
             err_sys("failed to open unsent directory");
+#ifdef DEBUG
+        else
+            printf("unsent_service: sent mails from unsent directory\n")
+#endif
 
         sleep(UNSENT_SLEEP);
     }

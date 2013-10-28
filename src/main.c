@@ -34,8 +34,12 @@ int main (int argc, char **argv)
 #endif
 
     /* become a daemon, if it is set so*/
-    if (0 != conf.daemon)
+    if (0 != conf.daemon) {
         daemonize(conf.prog_name, 0);
+#ifdef DEBUG
+        printf("smime-gate becomes a daemon\n");
+#endif
+    }
 
     /* create listening socket for SMTP Server */
     listenfd = Socket(AF_INET, SOCK_STREAM, 0);
@@ -50,12 +54,19 @@ int main (int argc, char **argv)
 
     /* start listening for client's connections */
     Listen(listenfd, LISTENQ);
+#ifdef DEBUG
+    printf("listening on port %d, address %c",
+            ntohs(conf.smtp_port), inet_ntoa(servaddr.sin_addr));
+#endif
 
     /* set appropriate handler for SIGCHLD */
     Signal(SIGCHLD, sig_chld);
 
     /* start unsent service */
     if ( (unsentpid = Fork()) == 0) {
+#ifdef DEBUG
+        printf("starting unsent service\n");
+#endif
         unsent_service();
         exit(0);
     }
@@ -64,6 +75,9 @@ int main (int argc, char **argv)
     for (;;) {
         clilen = sizeof(cliaddr);
         if ( (connfd = accept(listenfd, (SA *) &cliaddr, &clilen)) < 0) {
+#ifdef DEBUG
+            printf("accept() call returned non-zero status: %d\n" errno);
+#endif
             if (errno == EINTR)
                 continue;   /* back to for() */
             else
@@ -72,6 +86,9 @@ int main (int argc, char **argv)
 
         /* check whether subprocesses limit is not exceeded  */
         if (sproc_counter < MAXSUBPROC) {
+#ifdef DEBUG
+            printf("incomming connection, forking a child...\n");
+#endif
             if ( (childpid = Fork()) == 0) {    /* child process */
                 Close(listenfd);                /* close listening socket */
                 smime_gate_service(connfd);     /* process the request */
