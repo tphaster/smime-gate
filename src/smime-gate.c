@@ -81,7 +81,19 @@ void smime_gate_service (int sockfd)
 
     /* forward all received mail objects */
     srvfd = Socket(AF_INET, SOCK_STREAM, 0);
-    Connect(srvfd, (SA *) &(conf.mail_srv), sizeof(conf.mail_srv));
+    if (connect(srvfd, (SA *) &(conf.mail_srv), sizeof(conf.mail_srv)) < 0) {
+        /* mails cannot be sent now, move it to unsent directory */
+        for (i = 0; i < no_mails; ++i) {
+            snprintf(unsent, FNMAXLEN, DEFAULT_UNSENT_DIR "/%s", basename(fns[i]));
+            rename(fns[i], unsent);
+
+            free_mail_object(mails[i]);
+            free(mails[i]);
+            free(fns[i]);
+        }
+        err_sys("connect error");
+    }
+
     if (1 == no_mails)
         srv = SMTP_CLI_NEW | SMTP_CLI_LST;
     else
@@ -285,9 +297,10 @@ void unsent_service (void)
     prctl(PR_SET_PDEATHSIG, SIGTERM);
 
     for (;;) {
-        sleep(UNSENT_SLEEP);
         if (-1 == send_mails_from_dir(DEFAULT_UNSENT_DIR, &(conf.mail_srv)) )
             err_sys("failed to open unsent directory");
+
+        sleep(UNSENT_SLEEP);
     }
 }
 
