@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # S/MIME Tool 1.0, simple tool for processing S/MIME messages
 # Author: Tomasz Pieczerak (tphaster)
