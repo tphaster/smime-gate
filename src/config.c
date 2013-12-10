@@ -280,8 +280,8 @@ void load_config (void)
             if ((port = atoi(buf+12)) > 0)
                 conf.smtp_port = htons(port);
             else
-                fprintf(stderr, "Syntax error in config file on line %d"
-                       "-- bad SMTP port (smtp_port).\n", line_cnt);
+                fprintf(stderr, "Syntax error in config file on line %u"
+                       "-- bad SMTP port (smtp_port).\n", (unsigned int)line_cnt);
         }
         /* rules file location */
         else if (0 == strncmp("rules = ", buf, 8)) {
@@ -297,9 +297,9 @@ void load_config (void)
         else if (0 == strncmp("mail_srv_addr = ", buf, 16)) {
             (buf+16)[strlen(buf+16)-1] = '\0';
             if (1 != inet_pton(AF_INET, buf+16, &(conf.mail_srv.sin_addr))) {
-                fprintf(stderr, "Syntax error in config file on line %d"
+                fprintf(stderr, "Syntax error in config file on line %u"
                        " - not valid mail server address (mail_srv).\n",
-                       line_cnt);
+                       (unsigned int)line_cnt);
                 break;
             }
             else
@@ -310,13 +310,13 @@ void load_config (void)
             if ((port = atoi(buf+16)) > 0)
                 conf.mail_srv.sin_port = htons(port);
             else
-                fprintf(stderr, "Syntax error in config file on line %d"
-                       "-- bad mail server port (mail_srv_port).\n", line_cnt);
+                fprintf(stderr, "Syntax error in config file on line %u"
+                       "-- bad mail server port (mail_srv_port).\n", (unsigned int)line_cnt);
         }
 
         else
-            fprintf(stderr, "Syntax error in config file on line %d.\n",
-                    line_cnt);
+            fprintf(stderr, "Syntax error in config file on line %u.\n",
+                    (unsigned int)line_cnt);
     }
 
     fclose(config);
@@ -368,8 +368,8 @@ void load_config (void)
         else if  (0 == strncmp("VRFY ", buf, 5)) /* verify rule */
             conf.vrfy_rules_size += 1;
         else
-            fprintf(stderr, "Syntax error in rules file on line %d.\n",
-                    line_cnt);
+            fprintf(stderr, "Syntax error in rules file on line %u.\n",
+                    (unsigned int)line_cnt);
     }
 
     /* allocate rule arrays */
@@ -447,8 +447,8 @@ void load_config (void)
             if (R_DONE == state)
                 ++erule_cnt;
             else {
-                fprintf(stderr, "Syntax error in rules file on line %d.\n",
-                        line_cnt);
+                fprintf(stderr, "Syntax error in rules file on line %u.\n",
+                        (unsigned int)line_cnt);
 
                 if (NULL != conf.encr_rules[erule_cnt].rcpt)
                     free(conf.encr_rules[erule_cnt].rcpt);
@@ -536,8 +536,8 @@ void load_config (void)
             if (R_DONE == state)
                 ++srule_cnt;
             else {
-                fprintf(stderr, "Syntax error in rules file on line %d.\n",
-                        line_cnt);
+                fprintf(stderr, "Syntax error in rules file on line %u.\n",
+                        (unsigned int)line_cnt);
 
                 if (NULL != conf.sign_rules[srule_cnt].sndr)
                     free(conf.sign_rules[srule_cnt].sndr);
@@ -629,8 +629,8 @@ void load_config (void)
             if (R_DONE == state)
                 ++drule_cnt;
             else {
-                fprintf(stderr, "Syntax error in rules file on line %d.\n",
-                        line_cnt);
+                fprintf(stderr, "Syntax error in rules file on line %u.\n",
+                        (unsigned int)line_cnt);
 
                 if (NULL != conf.decr_rules[drule_cnt].rcpt)
                     free(conf.decr_rules[drule_cnt].rcpt);
@@ -712,8 +712,8 @@ void load_config (void)
             if (R_DONE == state)
                 ++vrule_cnt;
             else {
-                fprintf(stderr, "Syntax error in rules file on line %d.\n",
-                        line_cnt);
+                fprintf(stderr, "Syntax error in rules file on line %u.\n",
+                        (unsigned int)line_cnt);
 
                 if (NULL != conf.vrfy_rules[vrule_cnt].sndr)
                     free(conf.vrfy_rules[vrule_cnt].sndr);
@@ -725,8 +725,8 @@ void load_config (void)
             }
         }
         else
-            fprintf(stderr, "Syntax error in rules file on line %d.\n",
-                    line_cnt);
+            fprintf(stderr, "Syntax error in rules file on line %u.\n",
+                    (unsigned int)line_cnt);
     }
 
     fclose(rules);

@@ -589,7 +589,7 @@ int save_mail_to_file (struct mail_object *mail, const char *filename)
     fprintf(fp, "%s\n", mail->mail_from);
 
     /* save recipients addresses */
-    fprintf(fp, "%d\n", mail->no_rcpt);
+    fprintf(fp, "%u\n", (unsigned int)mail->no_rcpt);
     for (i = 0; i < mail->no_rcpt; ++i)
         fprintf(fp, "%s\n", mail->rcpt_to[i]);
 
