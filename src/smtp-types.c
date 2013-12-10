@@ -50,7 +50,7 @@ void print_mail_object (struct mail_object *mail)
         fprintf(stderr, "TO:   %s\n", mail->rcpt_to[i]);
 
     /* mail's SMTP content */
-    fprintf(stderr, "\nDATA (size: %d octets)\n%s=== END OF MAIL ===\n",
-            mail->data_size, mail->data);
+    fprintf(stderr, "\nDATA (size: %u octets)\n%s=== END OF MAIL ===\n",
+            (unsigned int)mail->data_size, mail->data);
 }
 
