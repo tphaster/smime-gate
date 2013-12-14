@@ -76,7 +76,7 @@ if [ "x$1" = "x--version" -o "x$1" = "x-V" ]; then
     cat <<EOT
 S/MIME Tool $VERSION
 
-Copyright (C) 2011-2012 Tomasz Pieczerak
+Copyright (C) 2011-2014 Tomasz Pieczerak
 License GPLv3+: GNU GPL version 3 or later
 <http://www.gnu.org/licenses/gpl.html>.
 This is free software: you are free to change and redistribute it.

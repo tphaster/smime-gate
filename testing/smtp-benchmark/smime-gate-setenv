@@ -138,13 +138,14 @@ else
     if [ ! -d "$1" ]; then
         echo "`basename $0`: there is no directory $1"
         exit 1
-    else
-        ENV_DIR=${1%/}
-        RULES_REL="./$RULES"
-        RULES="$ENV_DIR/$RULES"
-        CONFIG="$ENV_DIR/$CONFIG"
     fi
+
+    ENV_DIR=${1%/}
 fi
+
+RULES_REL="./$RULES"
+RULES="$ENV_DIR/$RULES"
+CONFIG="$ENV_DIR/$CONFIG"
 
 # check whether config file exists
 if [ -f $CONFIG ]; then
@@ -166,7 +167,7 @@ fi
 echo "Installing CA..."
 
 CA_DIR=$(basename "$CERT_REPO")
-CA_DIR=${CA_DIR%%.*}
+CA_DIR="./${CA_DIR%%.*}"
 
 tar -C $ENV_DIR -xzf $CERT_REPO
 
