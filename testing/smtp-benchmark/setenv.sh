@@ -1,53 +1,186 @@
 #!/bin/sh
 
+# smime-gate-setenv, set environment for smime-gate testing
+# Author: Tomasz Pieczerak (tphaster)
+
+VERSION=1.0
+set -e
+
+# default variables values
+ENV_DIR=.
 CERT_REPO=../files/cert_repo.tar.gz
-CONFIG=./config
-RULES=./rules
+CONFIG=config
+RULES=rules
 
 PORT=5555
 SERVER_ADDR=192.168.0.101
 SERVER_PORT=5780
 WORKING_DIR=./var_run_smime-gate
 
-set -e
+usage(){
+    cat 1<&2 <<EOT
+Usage: `basename $0` [OPTION].. [DIR]
 
-if [ ! -r $CERT_REPO ]; then
-	echo "`basename $0`: cannot read CA archive ($CERT_REPO)" 1<&2
-	exit 1
+Try '`basename $0` --help' for more options.
+EOT
+}
+
+readable(){
+    if [ ! -r "$1" ]; then
+        echo "`basename $0`: can't read $2 file $1" 1<&2
+        exit 1
+    fi
+}
+
+# display help on "-h" or "--help" option (it must be the first option)
+if [ "x$1" = "x--help" -o "x$1" = "x-h" ]; then
+    cat <<EOT
+smime-gate-setenv $VERSION, set environment for smime-gate testing
+Usage: `basename $0` [OPTION].. [DIR]
+
+There are no manadatory arguments. If no directory is specified, current
+directory is assumed (but script asks whether it is correct). User need to
+be able to run 'sudo', because working directory for smime-gate is linked in
+systems /var/run directory.
+
+Startup:
+    -h, --help  print this help.
+
+Options:
+    -c, --config-file   config filename (relative path).
+    -r, --rules-file    rules file name (relative path).
+    -a, --ca-archive    Certification Authority archive location.
+    -p, --port          S/MIME Gate port.
+    -s, --srv-addr      SMTP server address.
+    -o, --srv-addr      SMTP server port.
+    -w, --working-dir   working directory path.
+
+Mail bug reports and suggestions to <tphaster AT gmail.com>.
+EOT
+    exit 0
 fi
 
+# print program version on "-V" or "--version" option
+if [ "x$1" = "x--version" -o "x$1" = "x-V" ]; then
+    cat <<EOT
+smime-gate-setenv $VERSION
+
+Copyright (C) 2011-2014 Tomasz Pieczerak
+License GPLv3+: GNU GPL version 3 or later
+<http://www.gnu.org/licenses/gpl.html>.
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+
+Written and maintained by Tomasz Pieczerak <tphaste AT gmail.com>.
+Please send bug reports and questions to <tphaster AT gmail.com>.
+EOT
+    exit 0
+fi
+
+# parse options
+while [ "x$1" != "x" ]
+do
+    case $1 in
+        --) shift; break;;      # end of options
+        -c|--config-file)
+            shift
+            CONFIG="$1"
+            shift
+            ;;
+        -r|--rules-file)
+            shift
+            RULES="$1"
+            shift
+            ;;
+        -a|--ca-archive)
+            shift
+            CERT_REPO="$1"
+            shift
+            ;;
+        -p|--port)
+            shift
+            PORT="$1"
+            shift
+            ;;
+        -s|--srv-addr)
+            shift
+            SERVER_ADDR="$1"
+            shift
+            ;;
+        -o|--srv-port)
+            shift
+            SERVER_PORT="$1"
+            shift
+            ;;
+        -w|--working-dir)
+            shift
+            WORKING_DIR="$1"
+            shift
+            ;;
+        -*)
+            echo "`basename $0`: unknown OPTION $1" 1<&2
+            usage
+            exit 1
+            ;;
+        *)
+            break;;
+    esac
+done
+
+# check whether there is any argument left
+if [ "x$1" = "x" ]; then
+    read -p "No directory specified, assuming current directory. Ok? (y/n) " REPLY
+    if [ "x$REPLY" != "xy" ]; then
+        echo "Exiting..." 1<&2
+        exit 1
+    fi
+else
+    if [ ! -d "$1" ]; then
+        echo "`basename $0`: there is no directory $1"
+        exit 1
+    else
+        ENV_DIR=${1%/}
+        RULES_REL="./$RULES"
+        RULES="$ENV_DIR/$RULES"
+        CONFIG="$ENV_DIR/$CONFIG"
+    fi
+fi
+
+# check whether config file exists
 if [ -f $CONFIG ]; then
-	read -p "Config file $CONFIG exists. Overwrite? (y/n) " REPLY
-	if [ "x$REPLY" = "xy" ]; then
-		IFCONFIG=1
-	fi
-else
-	IFCONFIG=1
+    read -p "Config file $CONFIG exists. Overwrite? (y/n) " REPLY
+    if [ "x$REPLY" != "xy" ]; then
+        CONFIG=""
+    fi
 fi
 
+# check whether rules file exists
 if [ -f $RULES ]; then
-	read -p "Rules file $RULES exists. Overwrite? (y/n) " REPLY
-	if [ "x$REPLY" = "xy" ]; then
-		IFRULES=1
-	fi
-else
-	IFCONFIG=1
+    read -p "Rules file $RULES exists. Overwrite? (y/n) " REPLY
+    if [ "x$REPLY" != "xy" ]; then
+        RULES=""
+    fi
 fi
 
+# install CA
 echo "Installing CA..."
-rm -rf cert_repo
-tar xzf $CERT_REPO
 
-if [ $IFCONFIG ]; then
-	echo "Creating config file..."
-	cat <<EOT > $CONFIG
+CA_DIR=$(basename "$CERT_REPO")
+CA_DIR=${CA_DIR%%.*}
+
+tar -C $ENV_DIR -xzf $CERT_REPO
+
+# create config file
+if [ "x$CONFIG" != "x" ]; then
+    echo "Creating config file..."
+    cat <<EOT > $CONFIG
 # S/MIME Gate configuration file
 
 # SMTP Port, smime-gate will listen on it
 smtp_port = $PORT
 
 # rules file location
-rules = $RULES
+rules = $RULES_REL
 
 # Mail server address and port
 mail_srv_addr = $SERVER_ADDR
@@ -56,45 +189,38 @@ mail_srv_port = $SERVER_PORT
 EOT
 fi
 
-if [ $IFRULES ]; then
-	echo "Creating rules file..."
-	cat <<EOT > $RULES
+# create rules file
+if [ "x$RULES" != "x" ]; then
+    echo "Creating rules file..."
+    cat <<EOT > $RULES
 # S/MIME Gate rules file
 
 # Encryption rules
 # ENCR user@far.com /path/to/user_cert.pem
 
-ENCR userA_e@faar.com ./cert_userA_e.pem
-ENCR userB_e@faar.com ./cert_userB_e.pem
-ENCR encrypt@example.org ./cert_repo/ca/newcerts/02.pem
+ENCR encrypt@example.org $CA_DIR/ca/newcerts/02.pem
 
 # Signing rules
 # SIGN user@home.com /path/to/user_cert.pem /path/to/user_key.pem keypassword
 
-SIGN userA_s@home.com ./cert_userA_s.pem ./key_userA_s.pem keypassword
-SIGN userB_s@home.com ./cert_userB_s.pem ./key_userB_s.pem keypassword
-SIGN sign@example.org ./cert_repo/ca/newcerts/01.pem ./cert_repo/newkey01.pem qwerty
+SIGN sign@example.org $CA_DIR/ca/newcerts/01.pem $CA_DIR/newkey01.pem qwerty
 
 # Decryption rules
 # DECR user@home.com /path/to/user_cert.pem /path/to/user_key.pem keypassword
 
-DECR userA_d@home.com ./cert_userA_d.pem ./key_userA_d.pem keypassword
-DECR decrypt@example.org ./cert_repo/ca/newcerts/01.pem ./cert_repo/newkey01.pem qwerty
-DECR userC_d@home.com ./cert_userC_d.pem ./key_userC_d.pem keypassword
+DECR decrypt@example.org $CA_DIR/ca/newcerts/01.pem $CA_DIR/newkey01.pem qwerty
 
 # Verification rules
 # VRFY user@far.com /path/to/user_cert.pem /path/to/ca_cert.pem
 
-VRFY verify@example.org ./cert_repo/ca/newcerts/02.pem ./cert_repo/ca/cacert.pem
-VRFY userB_v@faar.com ./cert_userB_v.pem ./ca_cert.pem
-VRFY userC_v@faar.com ./cert_userA_v.pem ./ca_cert.pem
+VRFY verify@example.org $CA_DIR/ca/newcerts/02.pem $CA_DIR/ca/cacert.pem
 
 EOT
 fi
 
 echo "Creating working dir and linking to /var/run/smime-gate..."
 if [ ! -d $WORKING_DIR ]; then
-	mkdir -p $WORKING_DIR
+    mkdir -p $WORKING_DIR
 fi
 
 export WORKING_DIR=`readlink -e $WORKING_DIR`
