@@ -301,7 +301,7 @@ void unsent_service (void)
             err_sys("failed to open unsent directory");
 #ifdef DEBUG
         else
-            printf("unsent_service: sent mails from unsent directory\n");
+            printf(DPREF "unsent_service: sent mails from unsent directory\n");
 #endif
 
         sleep(UNSENT_SLEEP);

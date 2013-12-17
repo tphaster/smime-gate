@@ -21,6 +21,9 @@
 #define DEFAULT_UNSENT_DIR      "/var/run/smime-gate/unsent"
 #define DEFAULT_SMTP_PORT       587
 
+#define DPREF       "smime-gate-debug: "    /* debug prefix */
+#define LPREF       "smime-gate: "          /* log prefix   */
+
 #define CONF_MAXLEN     256     /* maximum line length of config/rules files */
 
 
