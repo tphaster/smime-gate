@@ -42,7 +42,7 @@ typedef void    Sigfunc(int);   /* for signal handlers */
 
 
 /** Externs **/
-extern int sproc_counter;       /* forked subprocesses counter */
+extern volatile sig_atomic_t sproc_counter; /* forked subprocesses counter */
 
 
 /** Functions **/

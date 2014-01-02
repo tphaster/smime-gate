@@ -14,7 +14,7 @@
 
 /** Global Variables **/
 struct config conf;     /* global configuration */
-int sproc_counter = 0;  /* forked subprocesses counter */
+volatile sig_atomic_t sproc_counter = 0;    /* forked subprocesses counter */
 
 /* S/MIME Gate main function */
 int main (int argc, char **argv)
