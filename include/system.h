@@ -9,6 +9,7 @@
 
 #include <poll.h>
 #include <signal.h>
+#include <pthread.h>
 #include <sys/socket.h>
 #include <sys/time.h>
 #ifdef DEBUG
@@ -39,11 +40,14 @@ typedef void    Sigfunc(int);   /* for signal handlers */
 #define FNMAXLEN          48    /* filename maximum length */
 #define MAILBUF           10    /* mail buffer size */
 #define CMDMAXLEN        512    /* command maximum length */
-#define UNSENT_SLEEP     900    /* (sec) how often try to resend unsent mails */
+#define UNSENT_SLEEP      60    /* (sec) how often try to resend unsent mails */
+#define SIGCHLD_SLEEP     50    /* SIGCHLD handling interval */
 
 
 /** Externs **/
-extern volatile sig_atomic_t sproc_counter; /* forked subprocesses counter */
+extern volatile sig_atomic_t sigchld_notify; /* SIGCHLD notifier */
+extern int sproc_counter;                    /* forked subprocess counter */
+extern pthread_mutex_t sproc_mutex;          /* mutex for subprocess counter */
 
 
 /** Functions **/
