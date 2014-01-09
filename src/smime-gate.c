@@ -30,7 +30,7 @@ void smime_gate_service (int sockfd)
 {
     int i, srvfd;
     int srv = SMTP_SRV_NEW;
-    int no_mails = 0;
+    int no_mails = 0;       /* number of mails */
     char **fns = Calloc(MAILBUF, sizeof(char *));
     char *filename;
     char *unsent = Malloc(FNMAXLEN);
@@ -46,7 +46,7 @@ void smime_gate_service (int sockfd)
         fns[no_mails] = filename;
         ++no_mails;
 #ifdef DEBUG
-        err_msg("received mail, saved in %s", filename);
+        printf(DPREF "received mail, saved in %s\n", filename);
 #endif
 
         if (NULL == (filename = generate_filename(no_mails))) {
@@ -77,12 +77,18 @@ void smime_gate_service (int sockfd)
     if (0 == no_mails)
         goto end_service;   /* no mails to process */
 
+#ifdef DEBUG
+        printf(DPREF "processing %d mails\n", no_mails);
+#endif
     smime_process_mails(mails, fns, no_mails);
 
     /* forward all received mail objects */
     srvfd = Socket(AF_INET, SOCK_STREAM, 0);
     if (connect(srvfd, (SA *) &(conf.mail_srv), sizeof(conf.mail_srv)) < 0) {
         /* mails cannot be sent now, move it to unsent directory */
+#ifdef DEBUG
+        printf(DPREF "cannot forward mails to server (connection error)\n");
+#endif
         for (i = 0; i < no_mails; ++i) {
             snprintf(unsent, FNMAXLEN, DEFAULT_UNSENT_DIR "/%s", basename(fns[i]));
             rename(fns[i], unsent);
@@ -100,8 +106,12 @@ void smime_gate_service (int sockfd)
         srv = SMTP_CLI_NEW | SMTP_CLI_CON;
 
     for (i = 0; i < no_mails; ++i) {
-        if (0 == smtp_send_mail(srvfd, mails[i], srv))
+        if (0 == smtp_send_mail(srvfd, mails[i], srv)) {
+#ifdef DEBUG
+            printf(DPREF "sent mail %s to server %s\n", fns[i], inet_ntoa(conf.mail_srv.sin_addr));
+#endif
             remove(fns[i]);
+        }
         else {  /* mail cannot be sent now, move it to unsent directory */
             snprintf(unsent, FNMAXLEN, DEFAULT_UNSENT_DIR "/%s", basename(fns[i]));
             rename(fns[i], unsent);

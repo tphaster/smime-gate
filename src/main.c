@@ -55,7 +55,7 @@ int main (int argc, char **argv)
     /* start listening for client's connections */
     Listen(listenfd, LISTENQ);
 #ifdef DEBUG
-    printf(DPREF "listening on port %d, address %c",
+    printf(DPREF "listening on port %d, address %s",
             ntohs(conf.smtp_port), inet_ntoa(servaddr.sin_addr));
 #endif
 

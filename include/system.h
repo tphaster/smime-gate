@@ -13,6 +13,7 @@
 #include <sys/time.h>
 #ifdef DEBUG
 #include <stdio.h>
+#include <arpa/inet.h>
 #endif
 
 /** Typedefs **/
