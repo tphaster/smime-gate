@@ -1,0 +1,17 @@
+#!/bin/sh
+
+LOG=./temp.log
+
+touch $LOG
+
+if [ ! -w $LOG ]; then
+	echo "Can't write to log, exiting..."
+	exit 1
+fi
+
+while true
+do
+	/opt/vc/bin/vcgencmd measure_temp | sed "s/^temp=\(.*\)'C$/\1/" >> $LOG
+	sleep 10
+done
+
