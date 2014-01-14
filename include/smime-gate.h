@@ -9,7 +9,6 @@
 
 void smime_gate_service (int sockfd);
 void unsent_service (void);
-void* child_process_guard (void* arg);
 
 
 #endif  /* __SMIME_GATE_H */

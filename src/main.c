@@ -13,18 +13,14 @@
 #include "smime-gate.h"
 
 /** Global Variables **/
-struct config conf;                         /* global configuration */
-volatile sig_atomic_t sigchld_notify = 0;   /* SIGCHLD notifier */
-int sproc_counter = 0;                      /* forked subprocess counter */
-pthread_mutex_t sproc_mutex = PTHREAD_MUTEX_INITIALIZER;
-                                            /* mutex for subprocess counter */
+struct config conf;     /* global configuration */
+volatile sig_atomic_t sproc_counter = 0;    /* forked subprocesses counter */
 
 /* S/MIME Gate main function */
 int main (int argc, char **argv)
 {
     int listenfd, connfd;
     pid_t childpid, unsentpid;
-    pthread_t guard_id;
     socklen_t clilen;
     struct sockaddr_in cliaddr, servaddr;
     void sig_chld(int);
@@ -67,20 +63,13 @@ int main (int argc, char **argv)
     Signal(SIGCHLD, sig_chld);
 
     /* start unsent service */
+    if ( (unsentpid = Fork()) == 0) {
 #ifdef DEBUG
         printf(DPREF "starting unsent service\n");
 #endif
-    if ( (unsentpid = Fork()) == 0) {
         unsent_service();
         exit(0);
     }
-
-    /* start child process guard */
-#ifdef DEBUG
-        printf(DPREF "starting child process guard\n");
-#endif
-    if (0 != pthread_create(&guard_id, NULL, child_process_guard, NULL) )
-        err_sys("pthread_create error");
 
     /* SMTP Server's main loop */
     for (;;) {
@@ -105,9 +94,7 @@ int main (int argc, char **argv)
                 smime_gate_service(connfd);     /* process the request */
                 exit(0);
             }
-            pthread_mutex_lock(&sproc_mutex);
             ++sproc_counter;
-            pthread_mutex_unlock(&sproc_mutex);
         }
         else
             err_msg("subprocesses limit exceeded, connection refused");

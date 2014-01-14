@@ -11,7 +11,6 @@
 #include <time.h>
 #include <sys/types.h>
 #include <sys/prctl.h>
-#include <sys/wait.h>
 #define _GNU_SOURCE
 #include <libgen.h>
 
@@ -317,27 +316,5 @@ void unsent_service (void)
 
         sleep(UNSENT_SLEEP);
     }
-}
-
-void* child_process_guard (void* arg __attribute__((__unused__)))
-{
-    pid_t pid;
-    int stat;
-
-    for (;;) {
-        if (0 == sigchld_notify) {
-            usleep(SIGCHLD_SLEEP);
-            continue;
-        }
-
-        while ( (pid = waitpid(-1, &stat, WNOHANG)) > 0) {
-            pthread_mutex_lock(&sproc_mutex);
-            --sproc_counter;
-            pthread_mutex_unlock(&sproc_mutex);
-            err_msg("child %d terminated", pid);
-        }
-        sigchld_notify = 0;
-    }
-    return NULL;
 }
 

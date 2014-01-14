@@ -46,7 +46,13 @@ Sigfunc *Signal (int signo, Sigfunc *func)
 
 void sig_chld (int signo __attribute__((__unused__)))
 {
-    sigchld_notify = 1;
+    pid_t pid;
+    int stat;
+
+    while ( (pid = waitpid(-1, &stat, WNOHANG)) > 0) {
+        --sproc_counter;
+        err_msg("child %d terminated", pid);
+    }
     return;
 }
 

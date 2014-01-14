@@ -7,7 +7,6 @@ OBJECTS = $(addsuffix .o, $(basename $(SOURCES)))
 
 CC = gcc
 CFLAGS = -pedantic-errors -Wall -Wextra
-LDFLAGS = -pthread
 INCLUDE = include
 SRC = src
 
@@ -19,7 +18,7 @@ debug: CFLAGS += -DDEBUG
 debug: all
 
 smime-gate: $(OBJECTS)
-	$(CC) $^ $(LDFLAGS) -o $@
+	$(CC) $^ -o $@
 
 $(SRC)/%.o: $(SRC)/%.c Makefile
 	$(CC) -c -I$(INCLUDE) $(CFLAGS) $< -o $@
