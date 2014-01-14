@@ -333,8 +333,8 @@ void* child_process_guard (void* arg __attribute__((__unused__)))
         while ( (pid = waitpid(-1, &stat, WNOHANG)) > 0) {
             pthread_mutex_lock(&sproc_mutex);
             --sproc_counter;
-            pthread_mutex_unlock(&sproc_mutex);
             err_msg("child %d terminated", pid);
+            pthread_mutex_unlock(&sproc_mutex);
         }
         sigchld_notify = 0;
     }

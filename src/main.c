@@ -100,12 +100,12 @@ int main (int argc, char **argv)
 #ifdef DEBUG
             printf(DPREF "incomming connection, forking a child...\n");
 #endif
+            pthread_mutex_lock(&sproc_mutex);
             if ( (childpid = Fork()) == 0) {    /* child process */
                 Close(listenfd);                /* close listening socket */
                 smime_gate_service(connfd);     /* process the request */
                 exit(0);
             }
-            pthread_mutex_lock(&sproc_mutex);
             ++sproc_counter;
             pthread_mutex_unlock(&sproc_mutex);
         }
