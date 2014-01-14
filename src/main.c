@@ -21,6 +21,7 @@ int main (int argc, char **argv)
 {
     int listenfd, connfd;
     pid_t childpid, unsentpid;
+    sigset_t mask, chld_mask;
     socklen_t clilen;
     struct sockaddr_in cliaddr, servaddr;
     void sig_chld(int);
@@ -61,6 +62,8 @@ int main (int argc, char **argv)
 
     /* set appropriate handler for SIGCHLD */
     Signal(SIGCHLD, sig_chld);
+    sigemptyset(&chld_mask);
+    sigaddset(&chld_mask, SIGCHLD);
 
     /* start unsent service */
     if ( (unsentpid = Fork()) == 0) {
@@ -94,7 +97,9 @@ int main (int argc, char **argv)
                 smime_gate_service(connfd);     /* process the request */
                 exit(0);
             }
+            sigprocmask(SIG_BLOCK, &chld_mask, &mask);
             ++sproc_counter;
+            sigprocmask(SIG_SETMASK, &mask, NULL);
         }
         else
             err_msg("subprocesses limit exceeded, connection refused");
