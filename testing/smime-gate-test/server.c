@@ -17,7 +17,7 @@
 
 void service (int sockfd);
 ssize_t smtp_recv_mail_data (int sockfd, char **buf_ptr, size_t *buf_size);
-int sproc_counter = 0;
+volatile sig_atomic_t sproc_counter = 0;
 
 int main (void)
 {
