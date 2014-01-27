@@ -8,7 +8,7 @@ VERSION="1.0"
 
 # display usage info function
 usage(){
-    cat 1<&2 <<EOT
+    cat 1>&2 <<EOT
 Usage: `basename $0` [ACTION] [OPTION]... [MSG]
 
 Try '`basename $0` --help' for more options.
@@ -18,7 +18,7 @@ EOT
 # check whether file is readable
 readable(){
     if [ "x$1" = "x" ]; then
-        echo "`basename $0`: no $2 given" 1<&2
+        echo "`basename $0`: no $2 given" 1>&2
         usage
         exit 1
     fi
@@ -26,7 +26,7 @@ readable(){
     FILE=`readlink -f -- "$1"`
 
     if [ ! -r "$1" ]; then
-        echo "`basename $0`: can't read $2 file" 1<&2
+        echo "`basename $0`: can't read $2 file" 1>&2
         exit 1
     fi
 
@@ -35,7 +35,7 @@ readable(){
 
 # check number of arguments
 if [ $# -eq 0 ]; then
-    echo "`basename $0`: missing ACTION and MSG" 1<&2
+    echo "`basename $0`: missing ACTION and MSG" 1>&2
     usage
     exit 1
 fi
@@ -95,7 +95,7 @@ case $1 in
     -sign)    ACTION=s; shift;;
     -verify)  ACTION=v; shift;;
     *)
-        echo "`basename $0`: bad ACTION" 1<&2
+        echo "`basename $0`: bad ACTION" 1>&2
         usage
         exit 1
         ;;
@@ -136,7 +136,7 @@ do
             shift
             ;;
         -*)
-            echo "`basename $0`: unknown OPTION $1" 1<&2
+            echo "`basename $0`: unknown OPTION $1" 1>&2
             usage
             exit 1
             ;;
@@ -147,7 +147,7 @@ done
 
 # check whether there is any argument left (there have to be)
 if [ "x$1" = "x" ]; then
-    echo "`basename $0`: missing MSG" 1<&2
+    echo "`basename $0`: missing MSG" 1>&2
     usage
     exit 1
 fi
@@ -182,6 +182,12 @@ trap "rm -f $MSG.tmp" EXIT INT TERM
     done
 ) < $MSG
 
+# check if MIME header was present in MSG file
+if [ -f "$MSG.tmp" ]; then
+    echo "`basename $0`: $MSG is not a MIME formated message" 1>&2
+fi
+
+# adjust line endings to unix-like format
 sed -i 's/\r/\n/g' "$MSG.tmp"
 
 # check whether there are enough parameters
@@ -191,7 +197,7 @@ case $ACTION in
     [ds])      # decrypt/signing: key, pass
         KEY=`readable "$KEY" "private key"`
         if [ "x$PASS" = "x" ]; then
-            echo "`basename $0`: missing password for private key" 1<&2
+            echo "`basename $0`: missing password for private key" 1>&2
             usage
             exit 1
         fi
