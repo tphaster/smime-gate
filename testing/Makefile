@@ -15,6 +15,10 @@ SMTP_BSRV = smtp-benchmark/server.o \
 	../src/wrapunix.o ../src/wrapsock.o ../src/signal.o \
 	../src/smtp-lib.o ../src/rwwrap.o ../src/error.o \
 	../src/smtp.o ../src/smtp-types.o
+SMTP_BCLI = smtp-benchmark/client.o \
+	../src/wrapunix.o ../src/wrapsock.o \
+	../src/smtp-lib.o ../src/rwwrap.o ../src/error.o \
+	../src/smtp.o ../src/smtp-types.o
 
 SMTP_1_CLI = smtp-test-1/client.o \
 	../src/wrapsock.o ../src/smtp-lib.o ../src/rwwrap.o \
@@ -61,7 +65,8 @@ smime-gate-test: $(SMIME_CLI) $(SMIME_SRV)
 	$(CC) $(SMIME_CLI) -o smime-gate-test/client
 	$(CC) $(SMIME_SRV) -o smime-gate-test/server
 
-smtp-benchmark: $(SMTP_BSRV)
+smtp-benchmark: $(SMTP_BSRV) $(SMTP_BCLI)
+	$(CC) $(SMTP_BCLI) -o smtp-benchmark/client -pthread
 	$(CC) $(SMTP_BSRV) -o smtp-benchmark/server
 
 smtp-test-1: $(SMTP_1_CLI) $(SMTP_1_SRV)
