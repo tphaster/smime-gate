@@ -1,0 +1,15 @@
+# S/MIME Gate rules file
+
+# Encryption rules
+# ENCR encrypt@example.org /path/to/user_cert.pem
+
+# Signing rules
+# SIGN sign@example.org /path/to/user_cert.pem /path/to/user_key.pem keypassword
+
+# Decryption rules
+# DECR decrypt@example.org /path/to/user_cert.pem /path/to/user_key.pem keypassword
+
+# Verification rules
+# VRFY verify@example.org /path/to/user_cert.pem /path/to/ca_cert.pem
+
+

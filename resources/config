@@ -1,0 +1,12 @@
+# S/MIME Gate configuration file
+
+# SMTP Port, smime-gate will listen on it
+#smtp_port = 578
+
+# rules file location
+#rules = /etc/smime-gate/rules
+
+# Mail server address and port
+#mail_srv_addr = 
+#mail_srv_port = 
+
