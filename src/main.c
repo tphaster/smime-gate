@@ -30,16 +30,16 @@ int main (int argc, char **argv)
     parse_args(argc, argv);
     load_config();
 
+    printf("Starting smime-gate (v%s)...\n", conf.version);
+
 #ifdef DEBUG
     print_config();
 #endif
 
-    /* become a daemon, if it is set so*/
+    /* become a daemon, if it is set so */
     if (0 != conf.daemon) {
         daemonize(conf.prog_name, 0);
-#ifdef DEBUG
-        printf(DPREF "smime-gate becomes a daemon\n");
-#endif
+        err_msg("Starting smime-gate (v%s) in daemon mode...", conf.version);
     }
 
     /* create listening socket for SMTP Server */
@@ -55,10 +55,8 @@ int main (int argc, char **argv)
 
     /* start listening for client's connections */
     Listen(listenfd, LISTENQ);
-#ifdef DEBUG
-    printf(DPREF "listening on port %d, address %s",
+    err_msg("listening on port %d, address %s",
             ntohs(conf.smtp_port), inet_ntoa(servaddr.sin_addr));
-#endif
 
     /* set appropriate handler for SIGCHLD */
     Signal(SIGCHLD, sig_chld);
@@ -67,9 +65,7 @@ int main (int argc, char **argv)
 
     /* start unsent service */
     if ( (unsentpid = Fork()) == 0) {
-#ifdef DEBUG
-        printf(DPREF "starting unsent service\n");
-#endif
+        err_msg("starting unsent service");
         unsent_service();
         exit(0);
     }

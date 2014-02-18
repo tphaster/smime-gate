@@ -53,7 +53,7 @@ static void help (void)
     printf("Startup:\n"
            "  -V,  --version        display the version of smime-gate and exit.\n"
            "  -h,  --help           print this help.\n"
-           "  -d,  --daemon         smime-gate will detach and become a daemon\n");
+           "  -d,  --daemon         smime-gate will detach and become a daemon\n\n");
 
     printf("Configuration files:\n"
            "  -c FILE,  --config=FILE   get config from FILE.\n"
@@ -336,7 +336,6 @@ void load_config (void)
         len = strlen(DEFAULT_RULES_FILE)+1;
         conf.rules_file = Malloc(len);
         strncpy(conf.rules_file, DEFAULT_RULES_FILE, len);
-        fprintf(stderr, "Loaded default SMTP port as none was set.\n");
     }
 
 

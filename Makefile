@@ -16,7 +16,7 @@ INSTALL=install
 prefix=/usr/local
 exec_prefix=$(prefix)
 bindir=$(exec_prefix)/bin
-docdir=$(prefix)/doc
+docdir=$(prefix)/share/doc
 localstatedir=$(prefix)/var
 sysconfdir=$(prefix)/etc
 
@@ -47,6 +47,7 @@ dep:
 install: smime-gate
 	@echo Installing smime-gate...
 	$(INSTALL) -D -s -m 0755 smime-gate $(DESTDIR)$(bindir)/smime-gate
+	$(INSTALL) -D -m 0755 src/smime-tool $(DESTDIR)$(bindir)/smime-tool
 	$(INSTALL) -D -m 0644 resources/config $(DESTDIR)$(sysconfdir)/smime-gate/config
 	$(INSTALL) -D -m 0644 resources/rules $(DESTDIR)$(sysconfdir)/smime-gate/rules
 	$(INSTALL) -D -m 0644 AUTHORS $(DESTDIR)$(docdir)/smime-gate/AUTHORS
@@ -59,6 +60,7 @@ uninstall:
 	@echo Uninstalling smime-gate from system...
 	@echo Configuration files are left in $(DESTDIR)$(sysconfdir)/smime-gate
 	rm -rf $(DESTDIR)$(bindir)/smime-gate
+	rm -rf $(DESTDIR)$(bindir)/smime-tool
 	rm -rf $(DESTDIR)$(docdir)/smime-gate
 	rm -rf $(DESTDIR)$(localstatedir)/run/smime-gate
 

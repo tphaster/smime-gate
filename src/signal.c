@@ -51,7 +51,9 @@ void sig_chld (int signo __attribute__((__unused__)))
 
     while ( (pid = waitpid(-1, &stat, WNOHANG)) > 0) {
         --sproc_counter;
-        err_msg("child %d terminated", pid);
+#ifdef DEBUG
+        printf(DPREF "child %d terminated", pid);
+#endif
     }
     return;
 }
