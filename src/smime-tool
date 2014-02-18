@@ -183,7 +183,7 @@ trap "rm -f $MSG.tmp" EXIT INT TERM
 ) < $MSG
 
 # check if MIME header was present in MSG file
-if [ -f "$MSG.tmp" ]; then
+if [ ! -f "$MSG.tmp" ]; then
     echo "`basename $0`: $MSG is not a MIME formated message" 1>&2
 fi
 
