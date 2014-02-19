@@ -13,7 +13,7 @@
 
 /** Constants **/
 
-#define VERSION         "1.0"   /* release version */
+#define VERSION         "1.2"   /* release version */
 
 #define DEFAULT_CONFIG_FILE     "/etc/smime-gate/config"
 #define DEFAULT_RULES_FILE      "/etc/smime-gate/rules"

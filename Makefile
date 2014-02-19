@@ -20,6 +20,13 @@ docdir=$(prefix)/share/doc
 localstatedir=$(prefix)/var
 sysconfdir=$(prefix)/etc
 
+# Check config files existence.
+ifneq ($(wildcard $(DESTDIR)$(sysconfdir)/smime-gate/config),)
+cnew=".new"
+endif
+ifneq ($(wildcard $(DESTDIR)$(sysconfdir)/smime-gate/rules),)
+rnew=".new"
+endif
 
 ## Targets ##################################################
 
@@ -48,8 +55,8 @@ install: smime-gate
 	@echo Installing smime-gate...
 	$(INSTALL) -D -s -m 0755 smime-gate $(DESTDIR)$(bindir)/smime-gate
 	$(INSTALL) -D -m 0755 src/smime-tool $(DESTDIR)$(bindir)/smime-tool
-	$(INSTALL) -D -m 0644 resources/config $(DESTDIR)$(sysconfdir)/smime-gate/config
-	$(INSTALL) -D -m 0644 resources/rules $(DESTDIR)$(sysconfdir)/smime-gate/rules
+	$(INSTALL) -D -m 0644 resources/config $(DESTDIR)$(sysconfdir)/smime-gate/config$(cnew)
+	$(INSTALL) -D -m 0644 resources/rules $(DESTDIR)$(sysconfdir)/smime-gate/rules$(rnew)
 	$(INSTALL) -D -m 0644 AUTHORS $(DESTDIR)$(docdir)/smime-gate/AUTHORS
 	$(INSTALL) -D -m 0644 COPYING $(DESTDIR)$(docdir)/smime-gate/COPYING
 	$(INSTALL) -D -m 0644 LICENSE $(DESTDIR)$(docdir)/smime-gate/LICENSE
