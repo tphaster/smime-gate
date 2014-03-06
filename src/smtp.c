@@ -555,7 +555,7 @@ ssize_t smtp_recv_mail_data (int sockfd, char **buf_ptr, size_t *buf_size)
         ++n;
 
         if (n == buflen) {
-            buflen += MAIL_START_LEN;
+            buflen *= 2;
             temp_buf = buf;
             if (NULL == (buf = malloc(buflen * sizeof(char)))) {
                 free(temp_buf);
